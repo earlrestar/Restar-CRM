@@ -1,0 +1,6 @@
+{
+  "name": "InLife ClientHub",
+  "description": "Comprehensive CRM and policy management portal for InLife financial advisers featuring automated client communications, Google Calendar sync, and Gmail integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
