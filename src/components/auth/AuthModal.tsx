@@ -17,7 +17,7 @@ import { useApp } from '../../context/AppContext';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultTab?: 'login' | 'domain-help' | 'clients';
+  defaultTab?: 'login' | 'domain-help' | 'clients' | 'verification-help';
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -39,9 +39,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     testGmail,
     sendCustomEmail,
     showToast,
+    settings,
+    updateSettings,
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'login' | 'domain-help' | 'clients'>(defaultTab);
+  const [activeTab, setActiveTab] = useState<'login' | 'domain-help' | 'clients' | 'verification-help'>(defaultTab);
   const [customEmail, setCustomEmail] = useState('');
   const [customName, setCustomName] = useState('');
   const [copied, setCopied] = useState(false);
@@ -118,10 +120,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex border-b border-slate-200 text-xs font-bold">
+        <div className="flex border-b border-slate-200 text-xs font-bold overflow-x-auto">
           <button
             onClick={() => setActiveTab('login')}
-            className={`pb-2.5 px-3 border-b-2 transition-colors ${
+            className={`pb-2.5 px-3 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'login'
                 ? 'border-blue-600 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -130,8 +132,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             Google Sign-In & Direct
           </button>
           <button
+            onClick={() => setActiveTab('verification-help')}
+            className={`pb-2.5 px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'verification-help'
+                ? 'border-red-600 text-red-700'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5 text-red-500" />
+            <span>Fix "Access Blocked"</span>
+          </button>
+          <button
             onClick={() => setActiveTab('clients')}
-            className={`pb-2.5 px-3 border-b-2 transition-colors ${
+            className={`pb-2.5 px-3 border-b-2 transition-colors whitespace-nowrap ${
               activeTab === 'clients'
                 ? 'border-blue-600 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -141,7 +154,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('domain-help')}
-            className={`pb-2.5 px-3 border-b-2 transition-colors flex items-center gap-1.5 ${
+            className={`pb-2.5 px-3 border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'domain-help'
                 ? 'border-blue-600 text-blue-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -156,18 +169,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {activeTab === 'login' && (
           <div className="space-y-4 text-xs">
             {googleError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-800 space-y-1">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-800 space-y-1.5">
                 <div className="flex items-center gap-1.5 font-bold">
                   <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
                   <span>Google Authentication Notice</span>
                 </div>
                 <p className="text-[11px] text-red-700 leading-relaxed">{googleError}</p>
-                {googleError.includes('unauthorized') && (
+                {googleError.includes('unauthorized') ? (
                   <button
                     onClick={() => setActiveTab('domain-help')}
-                    className="mt-1 text-[11px] font-bold text-red-900 underline flex items-center gap-1"
+                    className="mt-1 text-[11px] font-bold text-red-900 underline flex items-center gap-1 cursor-pointer"
                   >
                     View 2-step fix for Netlify authorized domain →
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setActiveTab('verification-help')}
+                    className="mt-1 text-[11px] font-bold text-red-900 underline flex items-center gap-1 cursor-pointer"
+                  >
+                    View 30-second fix for "Access blocked: has not completed Google verification" →
                   </button>
                 )}
               </div>
@@ -472,6 +492,121 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-[11px]">
               <strong className="block font-bold mb-0.5">Note on Google App Verification:</strong>
               Basic Google Sign-in requires NO verification. Only if you use direct Gmail sending or Google Calendar sync does Google Cloud require you to add your email as a "Test user" in Google Cloud Console &gt; OAuth consent screen &gt; Test users.
+            </div>
+          </div>
+        )}
+
+        {/* Tab 4: Google Verification / Access Blocked Fix */}
+        {activeTab === 'verification-help' && (
+          <div className="space-y-4 text-xs animate-fadeIn">
+            {/* Warning summary */}
+            <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl space-y-1.5 text-red-900">
+              <div className="flex items-center gap-2 font-bold">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                <span>Why did Google show "Access blocked"?</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-red-800">
+                Because this app requested the restricted scope <code className="bg-red-100 px-1 py-0.5 rounded font-mono text-[10px]">https://www.googleapis.com/auth/gmail.send</code> while the Google Cloud project is in <strong>Testing</strong> mode. Google automatically blocks any email not explicitly registered in the project's <strong>Test Users</strong> list.
+              </p>
+            </div>
+
+            {/* Solution A: 30-Second Fix in Google Cloud Console */}
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-slate-900 uppercase text-[11px] tracking-wide">
+                  Option 1: Add Your Email as a Google Cloud Test User (30-Sec Fix)
+                </span>
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
+                  Enables Real Gmail API
+                </span>
+              </div>
+
+              <ol className="list-decimal list-inside space-y-2 text-[11px] text-slate-700 leading-relaxed">
+                <li>
+                  Click the button below to open Google Cloud Console for project <strong className="font-mono text-slate-900">gen-lang-client-0450981798</strong>:
+                  <div className="mt-1.5 mb-2 pl-4">
+                    <a
+                      href="https://console.cloud.google.com/apis/credentials/consent?project=gen-lang-client-0450981798"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors text-xs shadow-xs"
+                    >
+                      <span>Open Google Cloud OAuth Consent Screen</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </li>
+                <li>
+                  Scroll down to the <strong>"Test users"</strong> section and click <strong>"+ ADD USERS"</strong>.
+                </li>
+                <li>
+                  Type <strong className="text-slate-900 bg-white px-1.5 py-0.5 border border-slate-200 rounded font-mono">earlrestarpogi@gmail.com</strong> (or your Gmail address) and click <strong>SAVE</strong>.
+                </li>
+                <li>
+                  Return to this tab and click <strong>"Retry Gmail Authentication"</strong> below. When Google displays <em>"Google hasn't verified this app"</em>, click <strong>"Advanced"</strong> → <strong>"Go to gen-lang-client-0450981798.firebaseapp.com (unsafe)"</strong> → Click <strong>Allow</strong>.
+                </li>
+              </ol>
+
+              <div className="pt-2 border-t border-slate-200 flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    const success = await connectGoogleWorkspace();
+                    if (success) {
+                      showToast('Gmail mailing authenticated successfully! You can now send live emails.', 'success');
+                      onClose();
+                    }
+                  }}
+                  disabled={isConnectingGoogle}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Mail className="w-3.5 h-3.5" />
+                  <span>{isConnectingGoogle ? 'Connecting...' : 'Retry Gmail Authentication'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Solution B: Instant bypass without Google Cloud setup */}
+            <div className="p-4 bg-blue-50/70 rounded-xl border border-blue-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-blue-950 uppercase text-[11px] tracking-wide">
+                  Option 2: Instant Login & Direct Mailing (No Google Cloud Setup Required)
+                </span>
+                <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded">
+                  Instant
+                </span>
+              </div>
+              <p className="text-[11px] text-blue-900 leading-relaxed">
+                If you prefer not to configure Google Cloud Console, you can log in immediately with standard non-sensitive scopes (which Google never blocks) and use the built-in InLife Enterprise Mailer:
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  onClick={async () => {
+                    const success = await connectGoogle(false);
+                    if (success) {
+                      showToast('Signed in with Google Account successfully!', 'success');
+                      onClose();
+                    }
+                  }}
+                  disabled={isConnectingGoogle}
+                  className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 flex items-center gap-2 shadow-2xs transition-colors cursor-pointer"
+                >
+                  <Shield className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Sign In with Google (Basic Profile - Never Blocked)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    updateSettings({ emailProvider: 'Other / Resend' });
+                    showToast('Switched to InLife Direct Mailer! Ready to send emails.', 'success');
+                    onClose();
+                  }}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Mail className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Use InLife Direct Mailer</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -90,7 +90,7 @@ export interface AuthDiagnosticError {
  * without encountering the "Access blocked: has not completed Google verification" error.
  */
 export const googleSignIn = async (
-  requestWorkspaceScopes: boolean = true
+  requestWorkspaceScopes: boolean = false
 ): Promise<{ user: User; accessToken: string | null; hasWorkspaceScopes: boolean }> => {
   try {
     isSigningIn = true;

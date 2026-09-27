@@ -8,6 +8,7 @@ import {
   Palette,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   ExternalLink,
   RefreshCw,
   LogOut,
@@ -291,6 +292,22 @@ export const SettingsView: React.FC = () => {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Notice for Google Verification */}
+            <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-900">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  Seeing <strong>"Access blocked: has not completed Google verification"</strong>? Add your Gmail to Google Cloud Test Users.
+                </span>
+              </div>
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="text-xs font-bold text-amber-900 underline hover:text-amber-950 shrink-0 cursor-pointer"
+              >
+                Open 30-Sec Fix &amp; Guide →
+              </button>
             </div>
 
             {/* Test result feedback banner */}
