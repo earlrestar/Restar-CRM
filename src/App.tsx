@@ -21,8 +21,19 @@ import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { DocumentsView } from './components/documents/DocumentsView';
 import { NotificationsView } from './components/notifications/NotificationsView';
 import { SettingsView } from './components/settings/SettingsView';
+import { PrivacyPolicy } from './components/legal/PrivacyPolicy';
+import { TermsOfService } from './components/legal/TermsOfService';
 import { Client, Policy } from './types';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+
+const getInitialRoute = (): 'app' | 'privacy' | 'terms' => {
+  if (typeof window === 'undefined') return 'app';
+  const path = window.location.pathname.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
+  if (path.includes('privacy') || hash.includes('privacy')) return 'privacy';
+  if (path.includes('terms') || hash.includes('terms')) return 'terms';
+  return 'app';
+};
 
 function AppContent() {
   const {
@@ -33,6 +44,20 @@ function AppContent() {
     clients,
     toast,
   } = useApp();
+
+  const [route, setRoute] = useState<'app' | 'privacy' | 'terms'>(getInitialRoute);
+
+  React.useEffect(() => {
+    const handleLocationChange = () => {
+      setRoute(getInitialRoute());
+    };
+    window.addEventListener('popstate', handleLocationChange);
+    window.addEventListener('hashchange', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+      window.removeEventListener('hashchange', handleLocationChange);
+    };
+  }, []);
 
   // Modal States
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
@@ -62,6 +87,28 @@ function AppContent() {
     setModalTargetClient(client);
     setIsAddPolicyOpen(true);
   };
+
+  if (route === 'privacy') {
+    return (
+      <PrivacyPolicy
+        onBack={() => {
+          window.history.pushState({}, '', '/');
+          setRoute('app');
+        }}
+      />
+    );
+  }
+
+  if (route === 'terms') {
+    return (
+      <TermsOfService
+        onBack={() => {
+          window.history.pushState({}, '', '/');
+          setRoute('app');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="flex h-screen bg-slate-100 font-sans antialiased text-slate-800 overflow-hidden">

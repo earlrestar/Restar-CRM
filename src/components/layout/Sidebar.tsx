@@ -150,7 +150,7 @@ export const Sidebar: React.FC = () => {
       </nav>
 
       {/* Adviser Card Footer */}
-      <div className="p-3 border-t border-slate-800 bg-slate-950/60">
+      <div className="p-3 border-t border-slate-800 bg-slate-950/60 space-y-2">
         <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-900 border border-slate-800">
           <div
             className="w-8 h-8 rounded-full text-white font-bold text-xs flex items-center justify-center shrink-0"
@@ -169,6 +169,33 @@ export const Sidebar: React.FC = () => {
             style={{ backgroundColor: currentBrand.primaryColor }}
             title="System Online"
           ></span>
+        </div>
+
+        {/* Legal & OAuth Compliance Links */}
+        <div className="flex items-center justify-center gap-2 text-[10px] text-slate-500 pt-0.5">
+          <a
+            href="/privacy"
+            onClick={(e) => {
+              e.preventDefault();
+              window.history.pushState({}, '', '/privacy');
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }}
+            className="hover:text-slate-300 transition-colors underline cursor-pointer"
+          >
+            Privacy Policy
+          </a>
+          <span>&bull;</span>
+          <a
+            href="/terms"
+            onClick={(e) => {
+              e.preventDefault();
+              window.history.pushState({}, '', '/terms');
+              window.dispatchEvent(new PopStateEvent('popstate'));
+            }}
+            className="hover:text-slate-300 transition-colors underline cursor-pointer"
+          >
+            Terms of Service
+          </a>
         </div>
       </div>
     </aside>

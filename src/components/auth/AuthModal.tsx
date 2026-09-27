@@ -47,8 +47,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [customEmail, setCustomEmail] = useState('');
   const [customName, setCustomName] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copiedConsentUrl, setCopiedConsentUrl] = useState<string | null>(null);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [testResultMsg, setTestResultMsg] = useState<string | null>(null);
+
+  const copyConsentUrl = (url: string, key: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedConsentUrl(key);
+    setTimeout(() => setCopiedConsentUrl(null), 2500);
+  };
 
   if (!isOpen) return null;
 
@@ -546,6 +553,54 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   Return to this tab and click <strong>"Retry Gmail Authentication"</strong> below. When Google displays <em>"Google hasn't verified this app"</em>, click <strong>"Advanced"</strong> → <strong>"Go to gen-lang-client-0450981798.firebaseapp.com (unsafe)"</strong> → Click <strong>Allow</strong>.
                 </li>
               </ol>
+
+              {/* Consent Screen App URLs */}
+              <div className="p-3 bg-white border border-slate-200 rounded-lg space-y-2 text-xs">
+                <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wide block">
+                  Copy URLs for Google OAuth Consent Screen Form:
+                </span>
+                {(() => {
+                  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://ais-dev-fl5givbpg3nnko4upfgd6c-533313845314.asia-east1.run.app';
+                  const homeUrl = origin + '/';
+                  const privacyUrl = origin + '/privacy';
+                  const termsUrl = origin + '/terms';
+
+                  return (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-50 border border-slate-200 rounded text-[11px]">
+                        <span className="font-semibold text-slate-600 truncate">App Homepage: <code className="font-mono text-slate-800">{homeUrl}</code></span>
+                        <button
+                          type="button"
+                          onClick={() => copyConsentUrl(homeUrl, 'home')}
+                          className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 font-bold rounded text-[10px] text-slate-700 shrink-0"
+                        >
+                          {copiedConsentUrl === 'home' ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-50 border border-slate-200 rounded text-[11px]">
+                        <span className="font-semibold text-slate-600 truncate">Privacy Policy: <code className="font-mono text-slate-800">{privacyUrl}</code></span>
+                        <button
+                          type="button"
+                          onClick={() => copyConsentUrl(privacyUrl, 'privacy')}
+                          className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 font-bold rounded text-[10px] text-slate-700 shrink-0"
+                        >
+                          {copiedConsentUrl === 'privacy' ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                      <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-50 border border-slate-200 rounded text-[11px]">
+                        <span className="font-semibold text-slate-600 truncate">Terms of Service: <code className="font-mono text-slate-800">{termsUrl}</code></span>
+                        <button
+                          type="button"
+                          onClick={() => copyConsentUrl(termsUrl, 'terms')}
+                          className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 font-bold rounded text-[10px] text-slate-700 shrink-0"
+                        >
+                          {copiedConsentUrl === 'terms' ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
 
               <div className="pt-2 border-t border-slate-200 flex items-center gap-2">
                 <button
