@@ -26,6 +26,7 @@ export const SettingsView: React.FC = () => {
     isConnectingGoogle,
     googleError,
     connectGoogle,
+    connectGoogleWorkspace,
     disconnectGoogle,
     testGmail,
     testCalendar,
@@ -243,33 +244,52 @@ export const SettingsView: React.FC = () => {
                       <span>Switch Account / Client</span>
                     </button>
 
-                      <button
-                        onClick={disconnectGoogle}
-                        className="px-4 py-2 bg-slate-100 hover:bg-red-50 hover:text-red-700 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 flex items-center gap-2 transition-colors ml-auto"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>Disconnect Google</span>
-                      </button>
-                    </>
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-3">
-                      <button
-                        onClick={() => setIsAuthModalOpen(true)}
-                        className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-red-700/25 active:scale-98 transition-all cursor-pointer"
-                      >
-                        <Shield className="w-4 h-4" />
-                        <span>Sign In with Google</span>
-                      </button>
+                    <button
+                      onClick={async () => {
+                        const success = await connectGoogleWorkspace();
+                        if (success) {
+                          showToast('Gmail mailing successfully authenticated! Ready to send emails.', 'success');
+                        }
+                      }}
+                      className="px-4 py-2 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-xs font-bold text-red-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      title="Authorize live Gmail API sending and Google Calendar sync"
+                    >
+                      <Mail className="w-3.5 h-3.5 text-red-600" />
+                      <span>Re-Authenticate Gmail Mailing</span>
+                    </button>
 
-                      <button
-                        onClick={() => setIsAuthModalOpen(true)}
-                        className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs active:scale-98 transition-all cursor-pointer"
-                      >
-                        <Mail className="w-4 h-4" />
-                        <span>Direct Gmail / Client Login</span>
-                      </button>
-                    </div>
-                  )}
+                    <button
+                      onClick={disconnectGoogle}
+                      className="px-4 py-2 bg-slate-100 hover:bg-red-50 hover:text-red-700 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 flex items-center gap-2 transition-colors ml-auto"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Disconnect Google</span>
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={async () => {
+                        const success = await connectGoogleWorkspace();
+                        if (success) {
+                          showToast('Gmail mailing authenticated successfully!', 'success');
+                        }
+                      }}
+                      className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-red-700/25 active:scale-98 transition-all cursor-pointer"
+                    >
+                      <Mail className="w-4 h-4" />
+                      <span>Authenticate Gmail Mailing (Send Emails)</span>
+                    </button>
+
+                    <button
+                      onClick={() => setIsAuthModalOpen(true)}
+                      className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs active:scale-98 transition-all cursor-pointer"
+                    >
+                      <Shield className="w-4 h-4" />
+                      <span>Direct Gmail / Client Login</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

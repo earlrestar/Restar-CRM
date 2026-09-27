@@ -30,17 +30,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     googleEmail,
     connectGoogle,
     connectGoogleDirect,
+    connectGoogleWorkspace,
     disconnectGoogle,
     isConnectingGoogle,
     googleError,
     clients,
     currentBrand,
+    testGmail,
+    sendCustomEmail,
+    showToast,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'login' | 'domain-help' | 'clients'>(defaultTab);
   const [customEmail, setCustomEmail] = useState('');
   const [customName, setCustomName] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [testResultMsg, setTestResultMsg] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -167,17 +173,108 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             )}
 
-            <div className="space-y-2">
+            {/* Live Test Sender if already connected */}
+            {isGoogleConnected && (
+              <div className="p-4 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span className="font-extrabold text-emerald-950">
+                      Gmail Sending Ready for: {googleEmail}
+                    </span>
+                  </div>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                    API Active
+                  </span>
+                </div>
+                <p className="text-[11px] text-emerald-800 leading-relaxed">
+                  Your Google connection is active. You can now send automated premium reminders, birthday greetings, and customized policy notices directly through Gmail.
+                </p>
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={async () => {
+                      setIsSendingTest(true);
+                      setTestResultMsg(null);
+                      try {
+                        const target = googleEmail || 'earlrestarpogi@gmail.com';
+                        const res = await sendCustomEmail({
+                          recipientEmail: target,
+                          recipientName: 'Earl Restar',
+                          subject: 'InLife Gmail Integration Verified! 🚀',
+                          htmlBody: `<div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f8fafc; border-radius: 8px;">
+                            <h2 style="color: #00529B;">InLife Mailing Service Verified</h2>
+                            <p>Greetings from your Insular Life CRM system!</p>
+                            <p>This email confirms that your Gmail account (<strong>${target}</strong>) is authenticated and authorized to transmit automated policy updates, birthday greetings, and client notices directly via the official Google Gmail API.</p>
+                            <p style="color: #64748b; font-size: 12px; margin-top: 20px;">Sent securely via InLife Financial Adviser CRM</p>
+                          </div>`,
+                          emailType: 'Custom',
+                        });
+                        if (res.success) {
+                          setTestResultMsg(`Test email dispatched successfully to ${target}! Check your inbox.`);
+                        } else {
+                          setTestResultMsg(`Test email status: ${res.error || 'Simulated delivery recorded in audit log.'}`);
+                        }
+                      } finally {
+                        setIsSendingTest(false);
+                      }
+                    }}
+                    disabled={isSendingTest}
+                    className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>{isSendingTest ? 'Sending Test Email...' : 'Send Live Test Email via Gmail'}</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const res = await testGmail();
+                      setTestResultMsg(res.message);
+                    }}
+                    className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold rounded-lg text-xs transition-colors"
+                  >
+                    Verify Profile
+                  </button>
+                </div>
+                {testResultMsg && (
+                  <p className="text-[11px] font-semibold text-emerald-900 bg-emerald-100/70 p-2 rounded-lg border border-emerald-200 mt-2">
+                    {testResultMsg}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-3">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                Option 1: Official Google Popup Sign-In
+                Google Authentication Options
               </span>
+
+              {/* Primary: Authenticate Gmail Mailing */}
               <button
                 onClick={async () => {
-                  const success = await connectGoogle();
+                  const success = await connectGoogleWorkspace();
+                  if (success) {
+                    showToast('Gmail mailing successfully authenticated! Ready to send emails.', 'success');
+                    onClose();
+                  }
+                }}
+                disabled={isConnectingGoogle}
+                className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black flex items-center justify-center gap-3 shadow-md shadow-red-700/20 active:scale-98 transition-all cursor-pointer text-xs"
+              >
+                <Mail className="w-4 h-4" />
+                <span>
+                  {isConnectingGoogle
+                    ? 'Authenticating Gmail API with Google...'
+                    : 'Authenticate Gmail Mailing & Calendar (Send Emails)'}
+                </span>
+              </button>
+
+              {/* Secondary: Basic Google Sign-In */}
+              <button
+                onClick={async () => {
+                  const success = await connectGoogle(false);
                   if (success) onClose();
                 }}
                 disabled={isConnectingGoogle}
-                className="w-full py-3 px-4 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800 flex items-center justify-center gap-3 shadow-xs hover:border-slate-400 active:scale-98 transition-all"
+                className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-700 flex items-center justify-center gap-3 shadow-2xs hover:border-slate-400 active:scale-98 transition-all cursor-pointer text-xs"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path
@@ -197,15 +294,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                <span>
-                  {isConnectingGoogle
-                    ? 'Connecting to Google...'
-                    : 'Sign in with Google Account'}
-                </span>
+                <span>Basic Sign-In Only (Profile & Email)</span>
               </button>
-              <p className="text-[11px] text-slate-500 text-center">
-                Uses standard non-sensitive scopes. Works for any Gmail account without Google verification blocks.
-              </p>
             </div>
 
             <div className="relative flex py-2 items-center">

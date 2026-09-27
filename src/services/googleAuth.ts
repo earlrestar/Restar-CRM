@@ -42,8 +42,9 @@ export const getWorkspaceGoogleProvider = () => {
   return provider;
 };
 
-// Memory-only access token storage
-let cachedAccessToken: string | null = null;
+// Memory & Session access token storage
+let cachedAccessToken: string | null =
+  typeof window !== 'undefined' ? sessionStorage.getItem('inlife_session_gmail_token') : null;
 let isSigningIn = false;
 
 export const initAuth = (
@@ -59,6 +60,9 @@ export const initAuth = (
       }
     } else {
       cachedAccessToken = null;
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('inlife_session_gmail_token');
+      }
       if (onAuthFailure) onAuthFailure();
     }
   });
@@ -89,6 +93,9 @@ export const googleSignIn = async (
     const token = credential?.accessToken || null;
     if (token) {
       cachedAccessToken = token;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('inlife_session_gmail_token', token);
+      }
     }
     return {
       user: result.user,
@@ -147,6 +154,13 @@ export const getAccessToken = (): string | null => {
 
 export const setAccessTokenInMemory = (token: string | null) => {
   cachedAccessToken = token;
+  if (typeof window !== 'undefined') {
+    if (token) {
+      sessionStorage.setItem('inlife_session_gmail_token', token);
+    } else {
+      sessionStorage.removeItem('inlife_session_gmail_token');
+    }
+  }
 };
 
 export const logoutGoogle = async () => {
@@ -156,5 +170,8 @@ export const logoutGoogle = async () => {
     console.error('Sign out error:', err);
   } finally {
     cachedAccessToken = null;
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('inlife_session_gmail_token');
+    }
   }
 };
