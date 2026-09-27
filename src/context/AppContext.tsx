@@ -125,7 +125,7 @@ interface AppContextType {
 
   // Automation & Pending Emails
   pendingEmails: PendingEmailReview[];
-  approveAndSendEmail: (pendingId: string) => Promise<{ success: boolean; error?: string }>;
+  approveAndSendEmail: (pendingId: string, overrideRecipientEmail?: string) => Promise<{ success: boolean; error?: string }>;
   editPendingEmail: (pendingId: string, subject: string, bodyHtml: string) => void;
   skipPendingEmail: (pendingId: string) => void;
 
@@ -829,27 +829,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let errorMessage: string | undefined = undefined;
     let googleMessageId: string | undefined = undefined;
 
-    const token = getAccessToken();
+    let token = getAccessToken();
 
-    if (isGmailProvider && token) {
-      const result = await sendGmailMessage(token, {
-        to: payload.recipientEmail,
-        subject: payload.subject,
-        htmlBody: payload.htmlBody + settings.emailSignatureHtml,
-        fromName: settings.advisorName,
-        fromEmail: settings.advisorEmail,
-      });
-
-      if (!result.success) {
-        status = 'Failed';
-        errorMessage = result.error;
-      } else {
-        googleMessageId = result.messageId;
+    // If token is missing, attempt to prompt interactive Google Workspace authorization
+    if (isGmailProvider && !token) {
+      const authResult = await connectGoogle(true);
+      if (authResult) {
+        token = getAccessToken();
       }
-    } else if (isGmailProvider && !token) {
-      // In environment without fresh interactive prompt, simulate successful transmission via Gmail connected profile
-      googleMessageId = `gm_sim_${Date.now()}`;
-      status = 'Sent';
+    }
+
+    if (isGmailProvider) {
+      if (!token) {
+        status = 'Failed';
+        errorMessage =
+          'Gmail sending permission is required. Please click "Authenticate Gmail Mailing" in Settings or the Header to grant access.';
+      } else {
+        const result = await sendGmailMessage(token, {
+          to: payload.recipientEmail,
+          subject: payload.subject,
+          htmlBody: payload.htmlBody + settings.emailSignatureHtml,
+          fromName: settings.advisorName,
+          fromEmail: settings.advisorEmail,
+        });
+
+        if (!result.success) {
+          status = 'Failed';
+          errorMessage = result.error;
+        } else {
+          googleMessageId = result.messageId;
+        }
+      }
     }
 
     const emailRecord: EmailRecord = {
@@ -891,12 +901,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Pending Emails (Approval Mode)
-  const approveAndSendEmail = async (pendingId: string): Promise<{ success: boolean; error?: string }> => {
+  const approveAndSendEmail = async (
+    pendingId: string,
+    overrideRecipientEmail?: string
+  ): Promise<{ success: boolean; error?: string }> => {
     const pending = pendingEmails.find((p) => p.id === pendingId);
     if (!pending) return { success: false, error: 'Email review not found.' };
 
+    const targetEmail = (overrideRecipientEmail || pending.clientEmail).trim();
+
     const sendRes = await sendCustomEmail({
-      recipientEmail: pending.clientEmail,
+      recipientEmail: targetEmail,
       recipientName: pending.clientName,
       subject: pending.subject,
       htmlBody: pending.bodyHtml,

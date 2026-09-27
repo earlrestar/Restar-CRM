@@ -42,11 +42,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
     skipPendingEmail,
     sendCustomEmail,
     isGoogleConnected,
+    googleEmail,
+    settings,
     currentBrand,
     appearanceMode,
   } = useApp();
 
   const [reviewModalEmail, setReviewModalEmail] = useState<PendingEmailReview | null>(null);
+  const [reviewRecipientEmail, setReviewRecipientEmail] = useState('');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
   // Stats calculation
@@ -86,9 +89,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
     .sort((a, b) => a.birthday.substring(5).localeCompare(b.birthday.substring(5)))
     .slice(0, 4);
 
-  const handleApprove = async (pendingId: string) => {
+  const handleApprove = async (pendingId: string, emailOverride?: string) => {
     setIsProcessing(pendingId);
-    await approveAndSendEmail(pendingId);
+    await approveAndSendEmail(pendingId, emailOverride || reviewRecipientEmail || undefined);
     setIsProcessing(null);
     if (reviewModalEmail?.id === pendingId) {
       setReviewModalEmail(null);
@@ -481,7 +484,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                     <div className="pt-2 flex items-center justify-between border-t border-slate-200/60 text-xs">
                       <button
-                        onClick={() => setReviewModalEmail(pending)}
+                        onClick={() => {
+                          setReviewModalEmail(pending);
+                          setReviewRecipientEmail(pending.clientEmail);
+                        }}
                         className="text-slate-600 hover:text-slate-900 font-medium underline"
                       >
                         Preview Draft
@@ -631,6 +637,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             <div>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 uppercase">
+                  Recipient Email Address *
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setReviewRecipientEmail(
+                      (googleEmail || 'earlrestarpogi@gmail.com').trim()
+                    )
+                  }
+                  className="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                >
+                  Send Test to My Gmail ({googleEmail || 'earlrestarpogi@gmail.com'})
+                </button>
+              </div>
+              <input
+                type="email"
+                required
+                value={reviewRecipientEmail}
+                onChange={(e) => setReviewRecipientEmail(e.target.value)}
+                placeholder="client.email@domain.com"
+                className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-red-600 focus:outline-none"
+              />
+              <p className="text-[11px] text-slate-500 mt-1">
+                Notice: Sample demo emails (.sample) do not have active mailboxes. Click "Send Test to My Gmail" to receive this email directly in your inbox.
+              </p>
+            </div>
+
+            {/* Sender and Delivery Diagnostics Info */}
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900">
+                  Sending From: {googleEmail || 'earlrestarpogi@gmail.com'}
+                </span>
+                <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold">
+                  Gmail API
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Dispatched directly through Google servers. A copy will immediately appear in your Gmail <strong>Sent</strong> mailbox (mail.google.com).
+              </p>
+            </div>
+
+            <div>
               <label className="text-xs font-bold text-slate-500 uppercase">Subject</label>
               <p className="text-sm font-semibold text-slate-800 mt-0.5">{reviewModalEmail.subject}</p>
             </div>
@@ -651,11 +702,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 Close
               </button>
               <button
-                onClick={() => handleApprove(reviewModalEmail.id)}
-                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-md shadow-red-700/20"
+                onClick={() => handleApprove(reviewModalEmail.id, reviewRecipientEmail)}
+                disabled={isProcessing === reviewModalEmail.id}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-md shadow-red-700/20 active:scale-98 transition-all cursor-pointer"
               >
                 <Send className="w-4 h-4" />
-                <span>Approve & Send via Gmail</span>
+                <span>
+                  {isProcessing === reviewModalEmail.id
+                    ? 'Transmitting via Gmail...'
+                    : 'Approve & Send via Gmail'}
+                </span>
               </button>
             </div>
           </div>

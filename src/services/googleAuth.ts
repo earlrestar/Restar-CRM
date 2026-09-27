@@ -42,9 +42,15 @@ export const getWorkspaceGoogleProvider = () => {
   return provider;
 };
 
-// Memory & Session access token storage
-let cachedAccessToken: string | null =
-  typeof window !== 'undefined' ? sessionStorage.getItem('inlife_session_gmail_token') : null;
+// Memory & Persistent access token storage
+const TOKEN_STORAGE_KEY = 'inlife_google_access_token';
+
+const getInitialToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(TOKEN_STORAGE_KEY) || sessionStorage.getItem('inlife_session_gmail_token');
+};
+
+let cachedAccessToken: string | null = getInitialToken();
 let isSigningIn = false;
 
 export const initAuth = (
@@ -61,6 +67,7 @@ export const initAuth = (
     } else {
       cachedAccessToken = null;
       if (typeof window !== 'undefined') {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
         sessionStorage.removeItem('inlife_session_gmail_token');
       }
       if (onAuthFailure) onAuthFailure();
@@ -83,7 +90,7 @@ export interface AuthDiagnosticError {
  * without encountering the "Access blocked: has not completed Google verification" error.
  */
 export const googleSignIn = async (
-  requestWorkspaceScopes: boolean = false
+  requestWorkspaceScopes: boolean = true
 ): Promise<{ user: User; accessToken: string | null; hasWorkspaceScopes: boolean }> => {
   try {
     isSigningIn = true;
@@ -94,6 +101,7 @@ export const googleSignIn = async (
     if (token) {
       cachedAccessToken = token;
       if (typeof window !== 'undefined') {
+        localStorage.setItem(TOKEN_STORAGE_KEY, token);
         sessionStorage.setItem('inlife_session_gmail_token', token);
       }
     }
@@ -149,6 +157,10 @@ export const googleSignIn = async (
 };
 
 export const getAccessToken = (): string | null => {
+  if (!cachedAccessToken && typeof window !== 'undefined') {
+    cachedAccessToken =
+      localStorage.getItem(TOKEN_STORAGE_KEY) || sessionStorage.getItem('inlife_session_gmail_token');
+  }
   return cachedAccessToken;
 };
 
@@ -156,8 +168,10 @@ export const setAccessTokenInMemory = (token: string | null) => {
   cachedAccessToken = token;
   if (typeof window !== 'undefined') {
     if (token) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
       sessionStorage.setItem('inlife_session_gmail_token', token);
     } else {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
       sessionStorage.removeItem('inlife_session_gmail_token');
     }
   }
@@ -171,6 +185,7 @@ export const logoutGoogle = async () => {
   } finally {
     cachedAccessToken = null;
     if (typeof window !== 'undefined') {
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
       sessionStorage.removeItem('inlife_session_gmail_token');
     }
   }

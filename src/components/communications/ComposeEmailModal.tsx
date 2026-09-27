@@ -24,6 +24,7 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
     sendCustomEmail,
     settings,
     isGoogleConnected,
+    googleEmail,
   } = useApp();
 
   const [recipientEmail, setRecipientEmail] = useState('');
@@ -188,7 +189,18 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
               />
             </div>
             <div>
-              <label className="font-bold text-slate-700 uppercase">Recipient Email *</label>
+              <div className="flex items-center justify-between">
+                <label className="font-bold text-slate-700 uppercase">Recipient Email *</label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRecipientEmail((googleEmail || 'earlrestarpogi@gmail.com').trim())
+                  }
+                  className="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                >
+                  Send to My Gmail ({googleEmail || 'earlrestarpogi@gmail.com'})
+                </button>
+              </div>
               <input
                 type="email"
                 required
@@ -197,7 +209,20 @@ export const ComposeEmailModal: React.FC<ComposeEmailModalProps> = ({
                 placeholder="client@gmail.com"
                 className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-red-600 focus:outline-none"
               />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Demo emails (.sample) do not have active inboxes. Click "Send to My Gmail" to verify delivery in your own inbox.
+              </p>
             </div>
+          </div>
+
+          {/* Delivery Route Info */}
+          <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center justify-between">
+            <span>
+              <strong>Sender:</strong> {settings.advisorName} &lt;{googleEmail || settings.advisorEmail}&gt; via official Gmail API
+            </span>
+            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              Synced to Gmail Sent Folder
+            </span>
           </div>
 
           {/* Subject Line */}
