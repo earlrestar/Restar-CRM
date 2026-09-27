@@ -9,8 +9,10 @@ import {
   RefreshCw,
   Palette,
   Check,
+  User,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { AuthModal } from '../auth/AuthModal';
 
 interface HeaderProps {
   onOpenAddClient: () => void;
@@ -35,6 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAddClient, onOpenNewAppoin
   const [isSearching, setIsSearching] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showBrandMenu, setShowBrandMenu] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const searchResults = searchTerm.trim()
     ? clients.filter(
@@ -111,9 +114,9 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAddClient, onOpenNewAppoin
         {/* Google Status Badge */}
         {isGoogleConnected ? (
           <button
-            onClick={() => setActiveView('settings')}
-            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium hover:bg-emerald-100 transition-colors"
-            title={`Connected to Google (${googleEmail})`}
+            onClick={() => setIsAuthModalOpen(true)}
+            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium hover:bg-emerald-100 transition-colors cursor-pointer"
+            title={`Connected: ${googleEmail} (Click to manage account)`}
           >
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             <span className="font-semibold text-emerald-900">Google Connected</span>
@@ -121,8 +124,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAddClient, onOpenNewAppoin
           </button>
         ) : (
           <button
-            onClick={() => setActiveView('settings')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold hover:bg-amber-100 transition-colors"
+            onClick={() => setIsAuthModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold hover:bg-amber-100 transition-colors cursor-pointer"
           >
             <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
             <span>Connect Google Account</span>
@@ -227,6 +230,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAddClient, onOpenNewAppoin
           <span>+ Add Client</span>
         </button>
       </div>
+
+      {/* Google Sign-In & Netlify Diagnostics Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </header>
   );
 };

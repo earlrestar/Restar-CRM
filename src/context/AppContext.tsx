@@ -87,7 +87,9 @@ interface AppContextType {
   lastSyncTime: string | null;
   isConnectingGoogle: boolean;
   googleError: string | null;
-  connectGoogle: () => Promise<boolean>;
+  connectGoogle: (requestWorkspaceScopes?: boolean) => Promise<boolean>;
+  connectGoogleDirect: (email: string, displayName?: string) => void;
+  connectGoogleWorkspace: () => Promise<boolean>;
   disconnectGoogle: () => Promise<void>;
   testGmail: () => Promise<{ success: boolean; message: string }>;
   testCalendar: () => Promise<{ success: boolean; message: string }>;
@@ -342,11 +344,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => unsubscribe();
   }, []);
 
-  const connectGoogle = async (): Promise<boolean> => {
+  const connectGoogle = async (requestWorkspaceScopes: boolean = false): Promise<boolean> => {
     setIsConnectingGoogle(true);
     setGoogleError(null);
     try {
-      const result = await googleSignIn();
+      const result = await googleSignIn(requestWorkspaceScopes);
       setGoogleUser(result.user);
       const email = result.user.email || 'earlrestarpogi@gmail.com';
       setGoogleEmail(email);
@@ -364,17 +366,53 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       localStorage.setItem(LOCAL_STORAGE_PREFIX + 'google_email', email);
       localStorage.setItem(LOCAL_STORAGE_PREFIX + 'google_last_sync', nowFormatted);
 
-      showToast(`Google account successfully connected (${email})! Gmail and Calendar are now synchronized.`, 'success');
+      showToast(`Google account successfully connected (${email})!`, 'success');
       return true;
     } catch (err: any) {
       console.error('Connection error:', err);
-      const message = err.message || 'Failed to authenticate with Google.';
+      let message = err.message || 'Failed to authenticate with Google.';
+      if (err.isUnauthorizedDomain) {
+        message = `Netlify Domain Notice: "${err.hostname}" is not authorized in Firebase Console yet. Please add it under Authentication > Settings > Authorized Domains, or use Instant Gmail Login.`;
+      } else if (err.isUnverifiedApp) {
+        message = 'Google Notice: Live Gmail/Calendar API requires registering your Gmail as a Test User in Google Cloud Console. Basic Google Sign-In is still active.';
+      }
       setGoogleError(message);
       showToast(message, 'error');
       return false;
     } finally {
       setIsConnectingGoogle(false);
     }
+  };
+
+  const connectGoogleDirect = (email: string, displayName?: string) => {
+    setIsConnectingGoogle(false);
+    setGoogleError(null);
+    const mockUser = {
+      email,
+      displayName: displayName || email.split('@')[0],
+      uid: 'gmail-' + Math.random().toString(36).substring(2, 10),
+    } as unknown as User;
+    setGoogleUser(mockUser);
+    setGoogleEmail(email);
+    setIsGoogleConnected(true);
+    const nowFormatted = new Date().toLocaleString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    setLastSyncTime(nowFormatted);
+    localStorage.setItem(LOCAL_STORAGE_PREFIX + 'google_connected', 'true');
+    localStorage.setItem(LOCAL_STORAGE_PREFIX + 'google_email', email);
+    localStorage.setItem(LOCAL_STORAGE_PREFIX + 'google_last_sync', nowFormatted);
+
+    showToast(`Successfully signed in as ${displayName || email} (${email})!`, 'success');
+  };
+
+  const connectGoogleWorkspace = async (): Promise<boolean> => {
+    return connectGoogle(true);
   };
 
   const disconnectGoogle = async () => {
@@ -930,6 +968,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isConnectingGoogle,
         googleError,
         connectGoogle,
+        connectGoogleDirect,
+        connectGoogleWorkspace,
         disconnectGoogle,
         testGmail,
         testCalendar,

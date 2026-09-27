@@ -13,8 +13,10 @@ import {
   LogOut,
   Link as LinkIcon,
   Save,
+  UserCheck,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { AuthModal } from '../auth/AuthModal';
 
 export const SettingsView: React.FC = () => {
   const {
@@ -48,6 +50,7 @@ export const SettingsView: React.FC = () => {
   } | null>(null);
 
   const [isTesting, setIsTesting] = useState<'gmail' | 'calendar' | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Email Links form state (Section 20)
   const [links, setLinks] = useState(settings.customLinks);
@@ -233,23 +236,40 @@ export const SettingsView: React.FC = () => {
                     </button>
 
                     <button
-                      onClick={disconnectGoogle}
-                      className="px-4 py-2 bg-slate-100 hover:bg-red-50 hover:text-red-700 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 flex items-center gap-2 transition-colors ml-auto"
+                      onClick={() => setIsAuthModalOpen(true)}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-colors"
                     >
-                      <LogOut className="w-3.5 h-3.5" />
-                      <span>Disconnect Google</span>
+                      <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Switch Account / Client</span>
                     </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={connectGoogle}
-                    disabled={isConnectingGoogle}
-                    className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-red-700/25 active:scale-98 transition-all"
-                  >
-                    <Shield className="w-4 h-4" />
-                    <span>{isConnectingGoogle ? 'Connecting via Google OAuth...' : 'Connect Google Account'}</span>
-                  </button>
-                )}
+
+                      <button
+                        onClick={disconnectGoogle}
+                        className="px-4 py-2 bg-slate-100 hover:bg-red-50 hover:text-red-700 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 flex items-center gap-2 transition-colors ml-auto"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        <span>Disconnect Google</span>
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        onClick={() => setIsAuthModalOpen(true)}
+                        className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md shadow-red-700/25 active:scale-98 transition-all cursor-pointer"
+                      >
+                        <Shield className="w-4 h-4" />
+                        <span>Sign In with Google</span>
+                      </button>
+
+                      <button
+                        onClick={() => setIsAuthModalOpen(true)}
+                        className="px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs active:scale-98 transition-all cursor-pointer"
+                      >
+                        <Mail className="w-4 h-4" />
+                        <span>Direct Gmail / Client Login</span>
+                      </button>
+                    </div>
+                  )}
               </div>
             </div>
 
@@ -725,6 +745,12 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Auth & Netlify Diagnostics Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </div>
   );
 };

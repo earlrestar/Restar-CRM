@@ -13,16 +13,36 @@ import firebaseConfig from '../../firebase-applet-config.json';
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 
-export const SCOPES = [
-  'https://www.googleapis.com/auth/gmail.send',
-  'https://www.googleapis.com/auth/calendar.events',
+// Basic non-sensitive scopes: NEVER blocked by Google Verification
+export const BASIC_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
 ];
 
-const provider = new GoogleAuthProvider();
-SCOPES.forEach((scope) => provider.addScope(scope));
+// Advanced Workspace scopes: used for live Gmail API and Calendar API
+export const WORKSPACE_SCOPES = [
+  'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/calendar.events',
+];
 
-// Memory-only access token storage (required for security)
+// Basic Google Sign-In Provider (Standard, open to all Google accounts)
+export const getBasicGoogleProvider = () => {
+  const provider = new GoogleAuthProvider();
+  BASIC_SCOPES.forEach((scope) => provider.addScope(scope));
+  provider.setCustomParameters({ prompt: 'select_account' });
+  return provider;
+};
+
+// Workspace Google Provider (Requires Google Cloud project test-user or verification)
+export const getWorkspaceGoogleProvider = () => {
+  const provider = new GoogleAuthProvider();
+  BASIC_SCOPES.forEach((scope) => provider.addScope(scope));
+  WORKSPACE_SCOPES.forEach((scope) => provider.addScope(scope));
+  provider.setCustomParameters({ prompt: 'consent select_account' });
+  return provider;
+};
+
+// Memory-only access token storage
 let cachedAccessToken: string | null = null;
 let isSigningIn = false;
 
@@ -35,7 +55,6 @@ export const initAuth = (
       if (cachedAccessToken) {
         if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
       } else if (!isSigningIn) {
-        // User is logged in to Firebase but token might need refresh via prompt
         if (onAuthSuccess) onAuthSuccess(user, null);
       }
     } else {
@@ -45,27 +64,78 @@ export const initAuth = (
   });
 };
 
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string }> => {
+export interface AuthDiagnosticError {
+  message: string;
+  isUnauthorizedDomain?: boolean;
+  isUnverifiedApp?: boolean;
+  isPopupClosed?: boolean;
+  hostname?: string;
+  projectId?: string;
+}
+
+/**
+ * Standard Google Sign-In:
+ * Uses basic non-sensitive scopes so any Gmail / Google account can log in immediately
+ * without encountering the "Access blocked: has not completed Google verification" error.
+ */
+export const googleSignIn = async (
+  requestWorkspaceScopes: boolean = false
+): Promise<{ user: User; accessToken: string | null; hasWorkspaceScopes: boolean }> => {
   try {
     isSigningIn = true;
+    const provider = requestWorkspaceScopes ? getWorkspaceGoogleProvider() : getBasicGoogleProvider();
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('Failed to retrieve access token from Google.');
+    const token = credential?.accessToken || null;
+    if (token) {
+      cachedAccessToken = token;
     }
-    cachedAccessToken = credential.accessToken;
-    return { user: result.user, accessToken: cachedAccessToken };
+    return {
+      user: result.user,
+      accessToken: token,
+      hasWorkspaceScopes: requestWorkspaceScopes,
+    };
   } catch (error: any) {
     console.error('Google Sign-In Error:', error);
-    let message = 'Unable to connect to Google Account.';
-    if (error.code === 'auth/popup-closed-by-user') {
-      message = 'Sign-in cancelled. The connection window was closed.';
-    } else if (error.code === 'auth/network-request-failed') {
-      message = 'Network error while attempting to connect to Google.';
-    } else if (error.message) {
-      message = error.message;
+    const currentHostname = typeof window !== 'undefined' ? window.location.hostname : 'unknown-domain';
+    const projectId = firebaseConfig.projectId || 'gen-lang-client-0450981798';
+
+    if (error.code === 'auth/unauthorized-domain') {
+      const err: AuthDiagnosticError = {
+        message: `The domain "${currentHostname}" is not yet authorized in Firebase Authentication.`,
+        isUnauthorizedDomain: true,
+        hostname: currentHostname,
+        projectId,
+      };
+      throw err;
     }
-    throw new Error(message);
+
+    if (
+      error.message?.includes('verification process') ||
+      error.message?.includes('unverified') ||
+      error.message?.includes('Access blocked') ||
+      error.code === 'auth/operation-not-allowed'
+    ) {
+      const err: AuthDiagnosticError = {
+        message: 'Google requires verification for restricted Gmail/Calendar scopes, or test-user registration in Google Cloud Console.',
+        isUnverifiedApp: true,
+        projectId,
+      };
+      throw err;
+    }
+
+    if (error.code === 'auth/popup-closed-by-user') {
+      const err: AuthDiagnosticError = {
+        message: 'Sign-in window was closed before completing authentication.',
+        isPopupClosed: true,
+      };
+      throw err;
+    }
+
+    const err: AuthDiagnosticError = {
+      message: error.message || 'Unable to connect to Google Account.',
+    };
+    throw err;
   } finally {
     isSigningIn = false;
   }

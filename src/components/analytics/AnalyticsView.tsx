@@ -2,6 +2,7 @@ import React from 'react';
 import { BarChart3, TrendingUp, Users, Shield, Award, CheckCircle, PieChart, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { INLIFE_PRODUCTS } from '../../data/products';
+import { InteractiveGraphSection } from './InteractiveGraphSection';
 
 export const AnalyticsView: React.FC = () => {
   const { clients, policies, currentBrand } = useApp();
@@ -129,6 +130,9 @@ export const AnalyticsView: React.FC = () => {
           <p className="text-xs text-slate-400 mt-1">Across {policies.length} issued policies</p>
         </div>
       </div>
+
+      {/* Interactive Graph Section with Dropdown */}
+      <InteractiveGraphSection />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Dynamic Product Mix Breakdown */}
