@@ -597,6 +597,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           {copiedConsentUrl === 'terms' ? 'Copied!' : 'Copy'}
                         </button>
                       </div>
+
+                      <div className="p-2 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-900 leading-normal">
+                        <strong>If Google says "Invalid domain: must be a top private domain":</strong> Do not type <code className="font-mono bg-amber-100 px-1 rounded">run.app</code> in the Authorized domains field. Simply <strong>leave Authorized domains empty</strong> or enter <code className="font-mono bg-amber-100 px-1 rounded">firebaseapp.com</code>.
+                      </div>
                     </div>
                   );
                 })()}

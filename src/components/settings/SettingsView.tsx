@@ -479,6 +479,18 @@ export const SettingsView: React.FC = () => {
                         </a>
                       </div>
                     </div>
+
+                    {/* Authorized Domain Notice */}
+                    <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-900 space-y-1 mt-2">
+                      <p className="font-bold flex items-center gap-1.5 text-amber-950">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Got error "Invalid domain: must be a top private domain"?</span>
+                      </p>
+                      <p className="text-amber-800 leading-relaxed">
+                        Google Cloud Console rejects <code className="font-mono bg-amber-100 px-1 py-0.5 rounded text-amber-950">run.app</code> because it is on the Public Suffix List.
+                        <strong> To fix:</strong> In the <em>"Authorized domains"</em> section on Google Cloud Console, <strong>delete run.app and leave that field completely empty</strong> (or enter <code className="font-mono bg-amber-100 px-1 py-0.5 rounded text-amber-950">firebaseapp.com</code>). Authorized domains are NOT required to test the app!
+                      </p>
+                    </div>
                   </div>
                 );
               })()}
