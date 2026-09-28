@@ -455,7 +455,10 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({
                     </div>
                     <div className="text-right">
                       <p className="font-extrabold text-slate-900">₱{pol.premiumAmount.toLocaleString()}</p>
-                      <p className="text-slate-400 text-[11px]">{pol.paymentFrequency}</p>
+                      <p className="text-slate-400 text-[11px]">
+                        {pol.paymentFrequency}
+                        {pol.fundValue > 0 && ` • Fund: ₱${pol.fundValue.toLocaleString()}`}
+                      </p>
                     </div>
                   </div>
                 ))}

@@ -18,7 +18,6 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { AppAccount } from '../../types';
-import { DEFAULT_ACCOUNTS } from '../../data/initialData';
 import { useApp } from '../../context/AppContext';
 
 interface LoginPageProps {
@@ -44,26 +43,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Handle Demo Account Login
-  const handleSelectDemo = (acc: (typeof DEFAULT_ACCOUNTS)[0]) => {
-    setIsLoading(true);
-    setTimeout(() => {
-      onLogin({
-        id: acc.id,
-        email: acc.email,
-        name: acc.name,
-        role: acc.role,
-        unitBranch: acc.unitBranch,
-        phone: acc.phone,
-        initials: acc.initials,
-        brandId: acc.brandId,
-        isCustom: false,
-      });
-      setIsLoading(false);
-      showToast(`Welcome back, ${acc.name}! Switched to private workspace.`, 'success');
-    }, 400);
-  };
-
   // Handle Form Sign In
   const handleSubmitSignIn = (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,39 +56,46 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     setIsLoading(true);
 
     setTimeout(() => {
-      // Check if matches known account
-      const matched = DEFAULT_ACCOUNTS.find(
-        (a) => a.email.toLowerCase() === email.trim().toLowerCase()
-      );
+      const trimmedEmail = email.trim();
+      const userSlug = trimmedEmail.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const initials = trimmedEmail
+        .split('@')[0]
+        .slice(0, 2)
+        .toUpperCase();
 
-      if (matched) {
+      // If user logs in with Earl's email, give Earl profile
+      if (trimmedEmail.toLowerCase() === 'earlrestarpogi@gmail.com') {
         onLogin({
-          ...matched,
-          isCustom: false,
+          id: 'earl_restar',
+          email: 'earlrestarpogi@gmail.com',
+          name: 'Earl Restar',
+          role: 'Senior Wealth Management Adviser',
+          unitBranch: 'InLife Makati Financial Center — Agape Unit',
+          phone: '+63 917 890 1234',
+          initials: 'ER',
+          brandId: 'inlife',
         });
-        showToast(`Welcome, ${matched.name}!`, 'success');
+        showToast('Welcome back, Earl Restar!', 'success');
       } else {
-        // Create or load custom account for this email
-        const userSlug = email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
-        const initials = email
+        const displayName = trimmedEmail
           .split('@')[0]
-          .slice(0, 2)
-          .toUpperCase();
+          .replace(/[._]/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase());
 
         onLogin({
-          id: `custom_${userSlug}`,
-          email: email.trim(),
-          name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+          id: `account_${userSlug}`,
+          email: trimmedEmail,
+          name: displayName || 'Financial Adviser',
           role: 'Accredited Financial Adviser',
-          unitBranch: 'InLife Advisory Group',
+          unitBranch: 'InLife Agency Network',
           initials: initials || 'FA',
           brandId: 'inlife',
           isCustom: true,
         });
-        showToast(`Signed in to your isolated adviser workspace!`, 'success');
+        showToast(`Signed in to your isolated workspace!`, 'success');
       }
       setIsLoading(false);
-    }, 500);
+    }, 400);
   };
 
   // Handle Form Registration
@@ -166,7 +152,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         
         // If it's Earl's Google email, bind to Earl's account
         if (storedEmail.toLowerCase().includes('earlrestar')) {
-          onLogin(DEFAULT_ACCOUNTS[0]);
+          onLogin({
+            id: 'earl_restar',
+            email: 'earlrestarpogi@gmail.com',
+            name: 'Earl Restar',
+            role: 'Senior Wealth Management Adviser',
+            unitBranch: 'InLife Makati Financial Center — Agape Unit',
+            phone: '+63 917 890 1234',
+            initials: 'ER',
+            brandId: 'inlife',
+          });
         } else {
           onLogin({
             id: `google_${userSlug}`,
@@ -386,14 +381,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-semibold text-slate-300">
-                        Password
-                      </label>
-                      <span className="text-[10px] text-slate-500">
-                        Demo: any password accepted
-                      </span>
-                    </div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                      Password
+                    </label>
                     <div className="relative">
                       <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                       <input
@@ -406,7 +396,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -502,41 +492,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({
                   </button>
                 </form>
               )}
-
-              {/* Quick Select Pre-Configured Adviser Profiles (For Instant Verification & Testing) */}
-              <div className="pt-4 border-t border-slate-800/80 space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    Quick Select Demo Profiles:
-                  </span>
-                  <span className="text-[10px] text-slate-500">1-Click Test</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {DEFAULT_ACCOUNTS.map((acc) => (
-                    <button
-                      key={acc.id}
-                      type="button"
-                      onClick={() => handleSelectDemo(acc)}
-                      disabled={isLoading}
-                      className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all flex items-center gap-2.5 cursor-pointer group"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-red-900/60 text-red-200 font-black text-xs flex items-center justify-center shrink-0 border border-red-700/50 group-hover:bg-red-600 group-hover:text-white transition-colors">
-                        {acc.initials}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-white truncate group-hover:text-red-300">
-                          {acc.name}
-                        </p>
-                        <p className="text-[10px] text-slate-400 truncate">
-                          {acc.role.split(' ')[0]} &bull; {acc.email.split('@')[0]}
-                        </p>
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-white shrink-0" />
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
 
             {/* Legal Links Footer */}

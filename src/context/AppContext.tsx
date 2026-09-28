@@ -113,7 +113,9 @@ interface AppContextType {
   policies: Policy[];
   addPolicy: (policy: Omit<Policy, 'id'>) => Policy;
   premiumPayments: PremiumPayment[];
+  addPremiumPayment: (payment: Omit<PremiumPayment, 'id'>) => PremiumPayment;
   fundValues: FundValueRecord[];
+  addFundValue: (record: Omit<FundValueRecord, 'id'>) => FundValueRecord;
   documents: DocumentRecord[];
 
   // Calendar
@@ -954,6 +956,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return newPol;
   };
 
+  const addFundValue = (fundData: Omit<FundValueRecord, 'id'>): FundValueRecord => {
+    const newFv: FundValueRecord = {
+      ...fundData,
+      id: `fv-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    };
+    setFundValues((prev) => [newFv, ...prev]);
+    return newFv;
+  };
+
+  const addPremiumPayment = (paymentData: Omit<PremiumPayment, 'id'>): PremiumPayment => {
+    const newPay: PremiumPayment = {
+      ...paymentData,
+      id: `pay-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    };
+    setPremiumPayments((prev) => [newPay, ...prev]);
+    return newPay;
+  };
+
   // Appointments & Calendar
   const addAppointment = async (
     aptData: Omit<CalendarAppointment, 'id' | 'syncedToGoogle'>,
@@ -1330,7 +1350,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         policies,
         addPolicy,
         premiumPayments,
+        addPremiumPayment,
         fundValues,
+        addFundValue,
         documents,
 
         appointments,

@@ -15,7 +15,7 @@ export const AddPolicyModal: React.FC<AddPolicyModalProps> = ({
   onClose,
   preselectedClient,
 }) => {
-  const { clients, addPolicy, currentBrand } = useApp();
+  const { clients, addPolicy, addFundValue, addPremiumPayment, currentBrand, showToast } = useApp();
 
   const defaultProd = INLIFE_PRODUCTS[0]; // iProtect 1
   const [clientId, setClientId] = useState(preselectedClient?.id || clients[0]?.id || '');
@@ -28,7 +28,7 @@ export const AddPolicyModal: React.FC<AddPolicyModalProps> = ({
     `IL-${Math.floor(1000000 + Math.random() * 9000000)}`
   );
   const [dueDate, setDueDate] = useState('2026-10-15');
-  const [fundValue, setFundValue] = useState('0');
+  const [fundValue, setFundValue] = useState('');
   const [ridersInput, setRidersInput] = useState(defaultProd.suggestedRiders.join(', '));
 
   if (!isOpen) return null;
@@ -42,11 +42,6 @@ export const AddPolicyModal: React.FC<AddPolicyModalProps> = ({
       setPremiumAmount(String(prod.defaultPremium));
       setPaymentFrequency(prod.defaultFrequency);
       setRidersInput(prod.suggestedRiders.join(', '));
-      if (prod.category === 'VUL & Investment') {
-        setFundValue('50000');
-      } else {
-        setFundValue('0');
-      }
     }
   };
 
@@ -61,23 +56,54 @@ export const AddPolicyModal: React.FC<AddPolicyModalProps> = ({
       .map((r) => r.trim())
       .filter((r) => r.length > 0);
 
-    addPolicy({
+    const parsedPrem = Number(premiumAmount) || 0;
+    const parsedFund = Number(fundValue) || 0;
+    const issueDate = new Date().toISOString().split('T')[0];
+
+    const createdPol = addPolicy({
       clientId,
       policyNumber: policyNumber.trim(),
       productName,
       planType,
       faceAmount: Number(faceAmount) || 1000000,
-      premiumAmount: Number(premiumAmount) || 5000,
+      premiumAmount: parsedPrem,
       paymentFrequency,
       status: 'In Force',
-      issueDate: new Date().toISOString().split('T')[0],
+      issueDate,
       dueDate,
       nextBillingDate: dueDate,
-      anniversaryDate: '2027-09-26',
-      fundValue: Number(fundValue) || 0,
+      anniversaryDate: dueDate.substring(5) || '10-15',
+      fundValue: parsedFund,
       riders,
     });
 
+    if (parsedFund > 0) {
+      addFundValue({
+        clientId,
+        policyId: createdPol.id,
+        date: issueDate,
+        fundName: 'InLife Growth Fund',
+        units: Math.round(parsedFund / 2.05),
+        navpu: 2.05,
+        totalValue: parsedFund,
+      });
+    }
+
+    if (parsedPrem > 0) {
+      addPremiumPayment({
+        clientId,
+        policyId: createdPol.id,
+        policyNumber: policyNumber.trim(),
+        amount: parsedPrem,
+        paymentDate: '',
+        dueDate,
+        referenceNumber: `REF-${Math.floor(100000 + Math.random() * 900000)}`,
+        status: 'Pending',
+        paymentMethod: 'Online Banking / ADA',
+      });
+    }
+
+    showToast(`Policy #${policyNumber} issued with ₱${parsedPrem.toLocaleString()} premium & ₱${parsedFund.toLocaleString()} fund value!`, 'success');
     onClose();
   };
 
@@ -252,11 +278,21 @@ export const AddPolicyModal: React.FC<AddPolicyModalProps> = ({
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 uppercase">Current Fund Value (₱)</label>
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-slate-700 uppercase">
+                Current Fund Value (₱){' '}
+                <span className="text-[10px] text-emerald-600 font-normal lowercase">(optional)</span>
+              </label>
+              <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-semibold">
+                Optional (VUL/Savings)
+              </span>
+            </div>
             <input
               type="number"
+              min="0"
               value={fundValue}
               onChange={(e) => setFundValue(e.target.value)}
+              placeholder="Optional (leave blank or 0 if none)"
               className="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg text-xs font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none"
             />
           </div>
