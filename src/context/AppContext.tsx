@@ -112,6 +112,8 @@ interface AppContextType {
   // Policies & Finances
   policies: Policy[];
   addPolicy: (policy: Omit<Policy, 'id'>) => Policy;
+  updatePolicy: (id: string, updates: Partial<Policy>) => void;
+  deletePolicy: (id: string) => void;
   premiumPayments: PremiumPayment[];
   addPremiumPayment: (payment: Omit<PremiumPayment, 'id'>) => PremiumPayment;
   fundValues: FundValueRecord[];
@@ -956,6 +958,86 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return newPol;
   };
 
+  const updatePolicy = (id: string, updates: Partial<Policy>) => {
+    setPolicies((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+    );
+
+    // If fundValue was updated, keep fundValues records in sync
+    if (typeof updates.fundValue === 'number') {
+      const existingPol = policies.find((p) => p.id === id);
+      const targetClientId = updates.clientId || existingPol?.clientId || '';
+      
+      setFundValues((prev) => {
+        const match = prev.find((fv) => fv.policyId === id);
+        if (match) {
+          return prev.map((fv) =>
+            fv.policyId === id
+              ? {
+                  ...fv,
+                  totalValue: updates.fundValue!,
+                  units: Math.round(updates.fundValue! / (fv.navpu || 2.05)),
+                  date: new Date().toISOString().split('T')[0],
+                }
+              : fv
+          );
+        } else if (updates.fundValue! > 0) {
+          const newFv: FundValueRecord = {
+            id: `fv-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            clientId: targetClientId,
+            policyId: id,
+            fundName: 'InLife Growth Fund',
+            units: Math.round(updates.fundValue! / 2.05),
+            navpu: 2.05,
+            totalValue: updates.fundValue!,
+            date: new Date().toISOString().split('T')[0],
+          };
+          return [...prev, newFv];
+        }
+        return prev;
+      });
+    }
+
+    // Log activity
+    const pol = policies.find((p) => p.id === id);
+    const targetClientId = updates.clientId || pol?.clientId;
+    if (targetClientId) {
+      const client = clients.find((c) => c.id === targetClientId);
+      if (client) {
+        addActivity(
+          client.id,
+          `${client.firstName} ${client.lastName}`,
+          'note_added',
+          `Policy Updated: ${updates.productName || pol?.productName || 'InLife Policy'}`,
+          `Policy #${updates.policyNumber || pol?.policyNumber} updated (Status: ${updates.status || pol?.status}, Premium: ₱${(updates.premiumAmount ?? pol?.premiumAmount ?? 0).toLocaleString()}).`
+        );
+      }
+    }
+
+    showToast(`Policy #${updates.policyNumber || pol?.policyNumber || ''} updated successfully!`, 'success');
+  };
+
+  const deletePolicy = (id: string) => {
+    const pol = policies.find((p) => p.id === id);
+    if (!pol) return;
+
+    setPolicies((prev) => prev.filter((p) => p.id !== id));
+    setFundValues((prev) => prev.filter((fv) => fv.policyId !== id));
+    setPremiumPayments((prev) => prev.filter((pay) => pay.policyId !== id));
+
+    const client = clients.find((c) => c.id === pol.clientId);
+    if (client) {
+      addActivity(
+        client.id,
+        `${client.firstName} ${client.lastName}`,
+        'note_added',
+        `Policy Removed`,
+        `Policy #${pol.policyNumber} (${pol.productName}) was removed from client records.`
+      );
+    }
+    showToast(`Policy #${pol.policyNumber} deleted.`, 'info');
+  };
+
   const addFundValue = (fundData: Omit<FundValueRecord, 'id'>): FundValueRecord => {
     const newFv: FundValueRecord = {
       ...fundData,
@@ -1349,6 +1431,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         policies,
         addPolicy,
+        updatePolicy,
+        deletePolicy,
         premiumPayments,
         addPremiumPayment,
         fundValues,

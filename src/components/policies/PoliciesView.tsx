@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Shield, Plus, Search, Filter, ExternalLink, User, Layers } from 'lucide-react';
+import { Shield, Plus, Search, Filter, ExternalLink, User, Layers, Edit3 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Policy, Client } from '../../types';
 import { INLIFE_PRODUCTS } from '../../data/products';
+import { EditPolicyModal } from './EditPolicyModal';
 
 interface PoliciesViewProps {
   onOpenAddPolicy: () => void;
@@ -15,6 +16,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ onOpenAddPolicy, onS
   const [searchTerm, setSearchTerm] = useState('');
   const [productFilter, setProductFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
 
   const filteredPolicies = policies.filter((pol) => {
     // Product exact filter
@@ -182,13 +184,14 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ onOpenAddPolicy, onS
                 <th className="py-3 px-4">Premium</th>
                 <th className="py-3 px-4">Fund Value</th>
                 <th className="py-3 px-4">Due Date</th>
-                <th className="py-3 px-4 text-right">Status</th>
+                <th className="py-3 px-4 text-center">Status</th>
+                <th className="py-3 px-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredPolicies.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={9} className="py-8 text-center text-slate-400">
                     No policies found matching the filter criteria.
                   </td>
                 </tr>
@@ -200,14 +203,19 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ onOpenAddPolicy, onS
                   return (
                     <tr
                       key={pol.id}
-                      onClick={() => client && openClientProfile(client.id)}
-                      className="hover:bg-slate-50/80 cursor-pointer group transition-colors"
+                      className="hover:bg-slate-50/80 group transition-colors"
                     >
-                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900 group-hover:text-blue-600">
+                      <td
+                        onClick={() => client && openClientProfile(client.id)}
+                        className="py-3.5 px-4 font-mono font-bold text-slate-900 group-hover:text-blue-600 cursor-pointer"
+                      >
                         {pol.policyNumber}
                       </td>
 
-                      <td className="py-3.5 px-4">
+                      <td
+                        onClick={() => client && openClientProfile(client.id)}
+                        className="py-3.5 px-4 cursor-pointer"
+                      >
                         {client ? (
                           <div>
                             <p className="font-bold text-slate-800">
@@ -220,7 +228,10 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ onOpenAddPolicy, onS
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4">
+                      <td
+                        onClick={() => client && openClientProfile(client.id)}
+                        className="py-3.5 px-4 cursor-pointer"
+                      >
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-slate-900">{pol.productName}</span>
                           {prodInfo && (
@@ -249,10 +260,30 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ onOpenAddPolicy, onS
 
                       <td className="py-3.5 px-4 text-slate-600 font-medium">{pol.dueDate}</td>
 
-                      <td className="py-3.5 px-4 text-right">
-                        <span className="px-2.5 py-0.5 rounded-full font-bold text-[10px] bg-emerald-50 text-emerald-700">
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
+                          pol.status === 'In Force'
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : pol.status === 'Grace Period'
+                            ? 'bg-amber-50 text-amber-700'
+                            : pol.status === 'Lapsed'
+                            ? 'bg-red-50 text-red-700'
+                            : 'bg-slate-100 text-slate-700'
+                        }`}>
                           {pol.status}
                         </span>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setEditingPolicy(pol)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-semibold text-[11px] transition-colors border border-slate-200 hover:border-blue-300 shadow-2xs cursor-pointer active:scale-95"
+                          title="Edit InLife Policy"
+                        >
+                          <Edit3 className="w-3 h-3 text-blue-600" />
+                          <span>Edit</span>
+                        </button>
                       </td>
                     </tr>
                   );
@@ -262,6 +293,13 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({ onOpenAddPolicy, onS
           </table>
         </div>
       </div>
+
+      {/* Edit Policy Modal */}
+      <EditPolicyModal
+        isOpen={!!editingPolicy}
+        onClose={() => setEditingPolicy(null)}
+        policy={editingPolicy}
+      />
     </div>
   );
 };

@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Client, Policy } from '../../types';
+import { EditPolicyModal } from '../policies/EditPolicyModal';
 
 interface ClientProfileProps {
   clientId: string;
@@ -70,6 +71,7 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [selectedAppointmentToLink, setSelectedAppointmentToLink] = useState('');
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
 
   const client = clients.find((c) => c.id === clientId);
 
@@ -441,28 +443,47 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({
                   + Add Policy
                 </button>
               </div>
-              <div className="divide-y divide-slate-100">
-                {clientPolicies.map((pol) => (
-                  <div key={pol.id} className="py-3 flex items-center justify-between text-xs">
-                    <div>
-                      <p className="font-bold text-slate-900 text-sm">
-                        {pol.productName}{' '}
-                        <span className="text-xs font-normal text-slate-500">({pol.policyNumber})</span>
-                      </p>
-                      <p className="text-slate-500 mt-0.5">
-                        {pol.planType} • Due {pol.dueDate}
-                      </p>
+                <div className="divide-y divide-slate-100">
+                  {clientPolicies.map((pol) => (
+                    <div key={pol.id} className="py-3 flex items-center justify-between text-xs group">
+                      <div>
+                        <p className="font-bold text-slate-900 text-sm">
+                          {pol.productName}{' '}
+                          <span className="text-xs font-normal text-slate-500">({pol.policyNumber})</span>
+                        </p>
+                        <p className="text-slate-500 mt-0.5">
+                          {pol.planType} • Due {pol.dueDate} •{' '}
+                          <span className={`font-semibold ${
+                            pol.status === 'In Force'
+                              ? 'text-emerald-600'
+                              : pol.status === 'Grace Period'
+                              ? 'text-amber-600'
+                              : 'text-slate-500'
+                          }`}>
+                            {pol.status}
+                          </span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="font-extrabold text-slate-900">₱{pol.premiumAmount.toLocaleString()}</p>
+                          <p className="text-slate-400 text-[11px]">
+                            {pol.paymentFrequency}
+                            {pol.fundValue > 0 && ` • Fund: ₱${pol.fundValue.toLocaleString()}`}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditingPolicy(pol)}
+                          className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-pointer"
+                          title="Edit Policy"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-extrabold text-slate-900">₱{pol.premiumAmount.toLocaleString()}</p>
-                      <p className="text-slate-400 text-[11px]">
-                        {pol.paymentFrequency}
-                        {pol.fundValue > 0 && ` • Fund: ₱${pol.fundValue.toLocaleString()}`}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
             </div>
           </div>
 
@@ -617,6 +638,17 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({
                     </ul>
                   </div>
                 )}
+
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setEditingPolicy(pol)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-blue-300 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs font-bold transition-all shadow-2xs cursor-pointer active:scale-95"
+                  >
+                    <Edit className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Edit InLife Policy</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -994,6 +1026,13 @@ export const ClientProfile: React.FC<ClientProfileProps> = ({
           </div>
         </div>
       )}
+
+      {/* Edit InLife Policy Modal */}
+      <EditPolicyModal
+        isOpen={!!editingPolicy}
+        onClose={() => setEditingPolicy(null)}
+        policy={editingPolicy}
+      />
     </div>
   );
 };
