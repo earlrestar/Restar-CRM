@@ -33,6 +33,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const {
     clients,
     policies,
+    fundValues,
     appointments,
     pendingEmails,
     activities,
@@ -46,22 +47,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
     settings,
     currentBrand,
     appearanceMode,
+    currentAccount,
+    metrics,
   } = useApp();
 
   const [reviewModalEmail, setReviewModalEmail] = useState<PendingEmailReview | null>(null);
   const [reviewRecipientEmail, setReviewRecipientEmail] = useState('');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
-  // Stats calculation
-  const totalClients = 186; // Reference metric from prompt with active dynamic breakdown
-  const activeClientsCount = clients.filter((c) => !c.isArchived).length;
-  const activePoliciesCount = 214;
-  const totalFundValue = '₱18.7M';
-  const premiumsDueAmount = '₱428K';
+  // Dynamic Live Real-Time Stats (computed from actual account data)
+  const totalClients = metrics.totalClients;
+  const activeClientsCount = metrics.activeClients;
+  const activePoliciesCount = metrics.activePolicies;
+  const totalFundValue = metrics.formatPHPCompact(metrics.totalFundValue);
+  const premiumsDueAmount = metrics.formatPHPCompact(metrics.premiumsDueAmount);
 
-  // Today's Appointments (Sept 26, 2026)
+  // Today's Appointments
   const todayDateStr = '2026-09-26';
-  const todayAppointments = appointments.filter((a) => a.date === todayDateStr);
+  const todayAppointments = appointments.filter(
+    (a) => a.date === todayDateStr || a.date === new Date().toISOString().split('T')[0]
+  );
 
   // Upcoming Appointments (Next 7 days: Sept 27 - Oct 3, 2026)
   const upcomingAppointments = appointments
@@ -141,11 +146,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
               <div>
                 <h1 className="text-2xl lg:text-3xl font-black tracking-tight flex items-center gap-2">
-                  <span>GOOD MORNING, EARL</span>
+                  <span>
+                    GOOD MORNING,{' '}
+                    {(currentAccount?.name || 'ADVISER')
+                      .split(' ')[0]
+                      .toUpperCase()}
+                  </span>
                   <span className="text-xl">👋</span>
                 </h1>
                 <p className="text-xs text-slate-400 mt-1 font-medium">
-                  Saturday, September 26, 2026 • {currentBrand.defaultBranch} •{' '}
+                  {currentAccount?.unitBranch || currentBrand.defaultBranch} •{' '}
                   <span
                     className="italic font-bold"
                     style={{
@@ -213,11 +223,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-black">{totalClients}</span>
-            <span className="text-xs font-bold text-emerald-600">Active Portfolio</span>
+            <span className="text-3xl font-black">{activeClientsCount}</span>
+            <span className="text-xs font-bold text-emerald-600">Active</span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            {activeClientsCount} tracked in {currentBrand.shortName} CRM
+            {totalClients} total clients in private portfolio ({metrics.archivedClients} archived)
           </p>
         </div>
 
@@ -239,9 +249,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black">{activePoliciesCount}</span>
-            <span className="text-xs font-bold text-blue-600">96.8% Persistency</span>
+            <span className="text-xs font-bold text-blue-600">
+              {metrics.totalPolicies > 0
+                ? Math.round((metrics.activePolicies / metrics.totalPolicies) * 100)
+                : 100}% Persistency
+            </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">VUL, Whole Life, Critical Illness</p>
+          <p className="text-xs text-slate-400 mt-1">
+            {metrics.totalPolicies} total policies registered ({activePoliciesCount} In-Force)
+          </p>
         </div>
 
         {/* Card 3: Total Fund Value */}
@@ -262,9 +278,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black">{totalFundValue}</span>
-            <span className="text-xs font-bold text-emerald-600">+12.4% YTD</span>
+            <span className="text-xs font-bold text-emerald-600">
+              {fundValues.length} Holdings
+            </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">Growth & equity index funds</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Exact: {metrics.formatPHP(metrics.totalFundValue)} in active VUL funds
+          </p>
         </div>
 
         {/* Card 4: Premiums Due */}
@@ -285,9 +305,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-3xl font-black">{premiumsDueAmount}</span>
-            <span className="text-xs font-bold text-amber-600">This Month</span>
+            <span className="text-xs font-bold text-amber-600">
+              {metrics.upcomingPremiumsCount} Policies Due
+            </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">Automated reminders queued</p>
+          <p className="text-xs text-slate-400 mt-1">
+            Exact: {metrics.formatPHP(metrics.premiumsDueAmount)} total premium payable
+          </p>
         </div>
       </div>
 

@@ -68,6 +68,14 @@ export const AnalyticsView: React.FC = () => {
 
   const totalSum = policies.reduce((acc, p) => acc + p.faceAmount, 0);
   const totalPrem = policies.reduce((acc, p) => acc + p.premiumAmount, 0);
+  const inForceCount = policies.filter((p) => p.status === 'In Force').length;
+  const persistencyRate =
+    policies.length > 0
+      ? ((inForceCount / policies.length) * 100).toFixed(1)
+      : '100.0';
+
+  const mdrtTarget = 3200000;
+  const mdrtPercent = Math.min(100, Math.round((totalPrem / mdrtTarget) * 100));
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
@@ -90,24 +98,29 @@ export const AnalyticsView: React.FC = () => {
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
           <span className="text-[10px] font-bold text-slate-400 uppercase">MDRT Production Goal</span>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">₱2.84M</span>
-            <span className="text-xs font-bold text-emerald-600">88.5% achieved</span>
+            <span className="text-2xl font-black text-slate-900">
+              ₱{(totalPrem / 1000000).toFixed(2)}M
+            </span>
+            <span className="text-xs font-bold text-emerald-600">{mdrtPercent}% achieved</span>
           </div>
           <div className="w-full bg-slate-100 rounded-full h-2 mt-2">
             <div
-              className="h-2 rounded-full w-[88.5%]"
-              style={{ backgroundColor: brandColor }}
+              className="h-2 rounded-full transition-all duration-500"
+              style={{ width: `${mdrtPercent}%`, backgroundColor: brandColor }}
             ></div>
           </div>
+          <p className="text-[10px] text-slate-400 mt-1">Goal: ₱3.2M Annual Premium</p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">13-Month Persistency</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase">Persistency Rate</span>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">96.8%</span>
-            <span className="text-xs font-bold text-emerald-600">Top 5% Branch</span>
+            <span className="text-2xl font-black text-slate-900">{persistencyRate}%</span>
+            <span className="text-xs font-bold text-emerald-600">
+              {inForceCount} of {policies.length} In-Force
+            </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">Excellent client retention across all plans</p>
+          <p className="text-xs text-slate-400 mt-1">Active client retention across all plans</p>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs">

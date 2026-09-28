@@ -3,8 +3,22 @@ import { CreditCard, Calendar, CheckCircle, Clock, AlertTriangle, Search } from 
 import { useApp } from '../../context/AppContext';
 
 export const PremiumTracker: React.FC = () => {
-  const { premiumPayments, policies, clients, openClientProfile } = useApp();
+  const { premiumPayments, policies, clients, openClientProfile, metrics } = useApp();
   const [filter, setFilter] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all');
+
+  const totalCollected = premiumPayments
+    .filter((p) => p.status === 'Paid')
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const upcomingDue = premiumPayments
+    .filter((p) => p.status === 'Pending' || p.status === 'Overdue')
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || metrics.premiumsDueAmount;
+
+  const inForcePolicies = policies.filter((p) => p.status === 'In Force').length;
+  const lapsePreventionRate =
+    policies.length > 0
+      ? ((inForcePolicies / policies.length) * 100).toFixed(1)
+      : '100.0';
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
@@ -22,16 +36,29 @@ export const PremiumTracker: React.FC = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Total Collected (Sep)</span>
-          <p className="text-2xl font-black text-emerald-600 mt-1">₱124,500</p>
+          <span className="text-[10px] font-bold text-slate-400 uppercase">Total Collected (Settled)</span>
+          <p className="text-2xl font-black text-emerald-600 mt-1">
+            {metrics.formatPHP(totalCollected)}
+          </p>
+          <span className="text-[11px] text-slate-400">
+            {premiumPayments.filter((p) => p.status === 'Paid').length} verified receipts
+          </span>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Upcoming Due (7 Days)</span>
-          <p className="text-2xl font-black text-amber-600 mt-1">₱55,000</p>
+          <span className="text-[10px] font-bold text-slate-400 uppercase">Upcoming Due (Pending)</span>
+          <p className="text-2xl font-black text-amber-600 mt-1">
+            {metrics.formatPHP(upcomingDue)}
+          </p>
+          <span className="text-[11px] text-slate-400">
+            {metrics.upcomingPremiumsCount} policies due
+          </span>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
           <span className="text-[10px] font-bold text-slate-400 uppercase">Lapse Prevention Rate</span>
-          <p className="text-2xl font-black text-blue-600 mt-1">98.2%</p>
+          <p className="text-2xl font-black text-blue-600 mt-1">{lapsePreventionRate}%</p>
+          <span className="text-[11px] text-slate-400">
+            {inForcePolicies} of {policies.length} in force
+          </span>
         </div>
       </div>
 

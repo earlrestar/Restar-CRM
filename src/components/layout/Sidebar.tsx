@@ -14,6 +14,8 @@ import {
   FileText,
   Bell,
   Settings as SettingsIcon,
+  LogOut,
+  Lock,
 } from 'lucide-react';
 import { useApp, NavView } from '../../context/AppContext';
 
@@ -24,11 +26,14 @@ export const Sidebar: React.FC = () => {
     pendingEmails,
     setSelectedClientId,
     clients,
+    policies,
+    fundValues,
+    appointments,
     currentBrand,
+    currentAccount,
+    logoutAccount,
+    metrics,
   } = useApp();
-
-  const archivedCount = clients.filter((c) => c.isArchived).length;
-  const reviewCount = pendingEmails.length;
 
   const navItems: Array<{
     id: NavView;
@@ -38,16 +43,41 @@ export const Sidebar: React.FC = () => {
     badgeColor?: string;
   }> = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'clients', label: 'Clients', icon: Users, badge: clients.filter((c) => !c.isArchived).length },
-    { id: 'policies', label: 'Policies', icon: Shield },
-    { id: 'premiums', label: 'Premium Tracker', icon: CreditCard },
-    { id: 'fund_values', label: 'Fund Values', icon: TrendingUp },
-    { id: 'calendar', label: 'Calendar', icon: CalendarIcon },
+    {
+      id: 'clients',
+      label: 'Clients',
+      icon: Users,
+      badge: metrics.activeClients,
+    },
+    {
+      id: 'policies',
+      label: 'Policies',
+      icon: Shield,
+      badge: metrics.activePolicies,
+    },
+    {
+      id: 'premiums',
+      label: 'Premium Tracker',
+      icon: CreditCard,
+      badge: metrics.upcomingPremiumsCount > 0 ? metrics.upcomingPremiumsCount : undefined,
+    },
+    {
+      id: 'fund_values',
+      label: 'Fund Values',
+      icon: TrendingUp,
+      badge: fundValues.length > 0 ? fundValues.length : undefined,
+    },
+    {
+      id: 'calendar',
+      label: 'Calendar',
+      icon: CalendarIcon,
+      badge: appointments.length > 0 ? appointments.length : undefined,
+    },
     {
       id: 'automation',
       label: 'Automation',
       icon: Zap,
-      badge: reviewCount > 0 ? reviewCount : undefined,
+      badge: metrics.pendingReviewsCount > 0 ? metrics.pendingReviewsCount : undefined,
       badgeColor: 'bg-amber-500 text-white',
     },
     { id: 'communications', label: 'Communications', icon: Mail },
@@ -149,30 +179,46 @@ export const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* Adviser Card Footer */}
-      <div className="p-3 border-t border-slate-800 bg-slate-950/60 space-y-2">
-        <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-900 border border-slate-800">
+      {/* Adviser Card Footer with Account Isolation & Logout */}
+      <div className="p-3 border-t border-slate-800 bg-slate-950/70 space-y-2">
+        <div className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-900 border border-slate-800 shadow-xs">
           <div
-            className="w-8 h-8 rounded-full text-white font-bold text-xs flex items-center justify-center shrink-0"
+            className="w-8 h-8 rounded-lg text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs"
             style={{ backgroundColor: currentBrand.primaryColor }}
           >
-            ER
+            {currentAccount?.initials || 'FA'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-white truncate">Earl Restar</p>
+            <p className="text-xs font-bold text-white truncate">
+              {currentAccount?.name || 'Financial Adviser'}
+            </p>
             <p className="text-[10px] text-slate-400 truncate">
-              {currentBrand.shortName} Advisory
+              {currentAccount?.role || `${currentBrand.shortName} Advisory`}
             </p>
           </div>
-          <span
-            className="w-2 h-2 rounded-full animate-pulse"
-            style={{ backgroundColor: currentBrand.primaryColor }}
-            title="System Online"
-          ></span>
+          <button
+            type="button"
+            onClick={logoutAccount}
+            title="Log Out & Switch Account"
+            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Privacy Badge */}
+        <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 font-medium">
+          <span className="flex items-center gap-1 text-emerald-400">
+            <Lock className="w-2.5 h-2.5" />
+            <span>Private Sandbox</span>
+          </span>
+          <span className="text-slate-500 font-mono text-[9px]">
+            ID: {currentAccount?.id.slice(0, 10)}
+          </span>
         </div>
 
         {/* Legal & OAuth Compliance Links */}
-        <div className="flex items-center justify-center gap-2 text-[10px] text-slate-500 pt-0.5">
+        <div className="flex items-center justify-center gap-2 text-[10px] text-slate-500 pt-1 border-t border-slate-900">
           <a
             href="/privacy"
             onClick={(e) => {

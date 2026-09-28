@@ -23,6 +23,7 @@ import { NotificationsView } from './components/notifications/NotificationsView'
 import { SettingsView } from './components/settings/SettingsView';
 import { PrivacyPolicy } from './components/legal/PrivacyPolicy';
 import { TermsOfService } from './components/legal/TermsOfService';
+import { LoginPage } from './components/auth/LoginPage';
 import { Client, Policy } from './types';
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 
@@ -43,6 +44,8 @@ function AppContent() {
     setSelectedClientId,
     clients,
     toast,
+    currentAccount,
+    loginAccount,
   } = useApp();
 
   const [route, setRoute] = useState<'app' | 'privacy' | 'terms'>(getInitialRoute);
@@ -106,6 +109,17 @@ function AppContent() {
           window.history.pushState({}, '', '/');
           setRoute('app');
         }}
+      />
+    );
+  }
+
+  // Authentication Gate: Render LoginPage before dashboard if not logged in
+  if (!currentAccount) {
+    return (
+      <LoginPage
+        onLogin={(account) => loginAccount(account)}
+        onOpenPrivacy={() => setRoute('privacy')}
+        onOpenTerms={() => setRoute('terms')}
       />
     );
   }

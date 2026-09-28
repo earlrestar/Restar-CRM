@@ -239,3 +239,17 @@ export interface DocumentRecord {
   uploadDate: string;
   fileSize: string;
 }
+
+export interface AppAccount {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  unitBranch: string;
+  phone?: string;
+  initials: string;
+  brandId: string;
+  avatarUrl?: string;
+  isCustom?: boolean;
+}
+

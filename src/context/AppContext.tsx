@@ -13,6 +13,7 @@ import {
   ActivityItem,
   DocumentRecord,
   EmailType,
+  AppAccount,
 } from '../types';
 import {
   InsuranceBrandTheme,
@@ -31,6 +32,9 @@ import {
   INITIAL_PREMIUM_PAYMENTS,
   INITIAL_FUND_VALUES,
   INITIAL_DOCUMENTS,
+  DEFAULT_ACCOUNTS,
+  CAMILLE_INITIAL_CLIENTS,
+  CAMILLE_INITIAL_POLICIES,
 } from '../data/initialData';
 import {
   initAuth,
@@ -177,6 +181,29 @@ interface AppContextType {
   setAppearanceMode: (mode: AppearanceMode) => void;
   allBrands: InsuranceBrandTheme[];
 
+  // Active Account & Auth state
+  currentAccount: AppAccount | null;
+  loginAccount: (account: AppAccount) => void;
+  logoutAccount: () => void;
+  allAccounts: AppAccount[];
+
+  // Dynamic Live Real-Time Aggregates
+  metrics: {
+    totalClients: number;
+    activeClients: number;
+    archivedClients: number;
+    totalPolicies: number;
+    activePolicies: number;
+    totalFundValue: number;
+    totalAnnualizedPremium: number;
+    premiumsDueAmount: number;
+    upcomingPremiumsCount: number;
+    pendingReviewsCount: number;
+    todayAppointmentsCount: number;
+    formatPHP: (val: number) => string;
+    formatPHPCompact: (val: number) => string;
+  };
+
   // Toast / Notifications
   toast: { message: string; type: 'success' | 'error' | 'info' } | null;
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
@@ -185,37 +212,136 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_PREFIX = 'inlife_clienthub_';
+const CURRENT_ACCOUNT_STORAGE_KEY = 'inlife_clienthub_active_account_id';
+const REGISTERED_ACCOUNTS_STORAGE_KEY = 'inlife_clienthub_registered_accounts';
 
-function loadFromStorage<T>(key: string, fallback: T): T {
+// Per-account data isolation helpers
+function getAccountData<T>(accountId: string | null, key: string, fallback: T): T {
+  if (!accountId) return fallback;
   try {
-    const item = localStorage.getItem(LOCAL_STORAGE_PREFIX + key);
-    return item ? JSON.parse(item) : fallback;
+    const raw = localStorage.getItem(`inlife_user_${accountId}_${key}`);
+    if (raw) return JSON.parse(raw);
+
+    // Initial defaults for standard accounts if not stored yet
+    if (accountId === 'earl_restar') {
+      if (key === 'clients') return INITIAL_CLIENTS as any;
+      if (key === 'policies') return INITIAL_POLICIES as any;
+      if (key === 'premium_payments') return INITIAL_PREMIUM_PAYMENTS as any;
+      if (key === 'fund_values') return INITIAL_FUND_VALUES as any;
+      if (key === 'appointments') return INITIAL_APPOINTMENTS as any;
+      if (key === 'pending_emails') return INITIAL_PENDING_EMAILS as any;
+      if (key === 'email_records') return INITIAL_EMAIL_RECORDS as any;
+      if (key === 'templates') return INITIAL_TEMPLATES as any;
+      if (key === 'activities') return INITIAL_ACTIVITIES as any;
+      if (key === 'documents') return INITIAL_DOCUMENTS as any;
+      if (key === 'settings') return INITIAL_SETTINGS as any;
+    } else if (accountId === 'camille_reyes') {
+      if (key === 'clients') return CAMILLE_INITIAL_CLIENTS as any;
+      if (key === 'policies') return CAMILLE_INITIAL_POLICIES as any;
+      if (key === 'premium_payments') return [] as any;
+      if (key === 'fund_values')
+        return [
+          {
+            id: 'cr-fv-1',
+            clientId: 'cr-c1',
+            policyId: 'cr-p1',
+            date: '2026-09-20',
+            fundName: 'InLife Growth Fund',
+            units: 120000,
+            navpu: 2.0,
+            totalValue: 240000,
+          },
+        ] as any;
+      if (key === 'appointments') return [] as any;
+      if (key === 'pending_emails') return [] as any;
+      if (key === 'email_records') return [] as any;
+      if (key === 'templates') return INITIAL_TEMPLATES as any;
+      if (key === 'activities') return [] as any;
+      if (key === 'documents') return [] as any;
+      if (key === 'settings')
+        return {
+          ...INITIAL_SETTINGS,
+          advisorName: 'Camille Reyes',
+          advisorEmail: 'camille.reyes@inlife.com.ph',
+          advisorPhone: '+63 919 444 8888',
+          advisorTitle: 'Associate Financial Adviser',
+          unitBranch: 'InLife BGC Prestige Financial District',
+        } as any;
+    }
+    return fallback;
   } catch (e) {
-    console.error(`Error loading ${key} from storage:`, e);
+    console.error(`Error loading account data for ${accountId} / ${key}:`, e);
     return fallback;
   }
 }
 
-function saveToStorage<T>(key: string, data: T) {
+function saveAccountData<T>(accountId: string, key: string, data: T) {
   try {
-    localStorage.setItem(LOCAL_STORAGE_PREFIX + key, JSON.stringify(data));
+    localStorage.setItem(`inlife_user_${accountId}_${key}`, JSON.stringify(data));
   } catch (e) {
-    console.error(`Error saving ${key} to storage:`, e);
+    console.error(`Error saving account data for ${accountId} / ${key}:`, e);
   }
 }
+
+export const formatPHP = (val: number): string => {
+  return '₱' + Math.round(val || 0).toLocaleString('en-PH');
+};
+
+export const formatPHPCompact = (val: number): string => {
+  const num = val || 0;
+  if (Math.abs(num) >= 1_000_000) {
+    return '₱' + (num / 1_000_000).toFixed(2) + 'M';
+  }
+  if (Math.abs(num) >= 1_000) {
+    return '₱' + (num / 1_000).toFixed(1) + 'K';
+  }
+  return '₱' + Math.round(num).toLocaleString('en-PH');
+};
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Navigation
   const [activeView, setActiveView] = useState<NavView>('dashboard');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
+  // Active Account State (defaults to null so login screen displays by default)
+  const [currentAccount, setCurrentAccount] = useState<AppAccount | null>(() => {
+    try {
+      const activeId = localStorage.getItem(CURRENT_ACCOUNT_STORAGE_KEY);
+      if (!activeId) return null;
+      const meta = localStorage.getItem(`inlife_account_meta_${activeId}`);
+      if (meta) return JSON.parse(meta);
+      const def = DEFAULT_ACCOUNTS.find((a) => a.id === activeId);
+      return def || null;
+    } catch {
+      return null;
+    }
+  });
+
+  const [allAccounts, setAllAccounts] = useState<AppAccount[]>(() => {
+    try {
+      const raw = localStorage.getItem(REGISTERED_ACCOUNTS_STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [...DEFAULT_ACCOUNTS];
+  });
+
+  const activeId = currentAccount?.id || null;
+  const isEarl = activeId === 'earl_restar';
+  const isCamille = activeId === 'camille_reyes';
+
   // Brand Theme State (Philippine Insurance Brands)
-  const [brandId, setBrandId] = useState<string>(() =>
-    loadFromStorage('brand_theme_id', 'inlife')
-  );
-  const [appearanceMode, setAppearanceModeState] = useState<AppearanceMode>(() =>
-    loadFromStorage('appearance_mode', 'clean_light')
-  );
+  const [brandId, setBrandId] = useState<string>(() => {
+    if (activeId) {
+      return getAccountData(activeId, 'brand_theme_id', 'inlife');
+    }
+    return 'inlife';
+  });
+  const [appearanceMode, setAppearanceModeState] = useState<AppearanceMode>(() => {
+    if (activeId) {
+      return getAccountData(activeId, 'appearance_mode', 'clean_light');
+    }
+    return 'clean_light';
+  });
 
   const currentBrand =
     PHILIPPINE_INSURANCE_BRANDS.find((b) => b.id === brandId) ||
@@ -223,7 +349,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const setBrandTheme = (newBrandId: string) => {
     setBrandId(newBrandId);
-    saveToStorage('brand_theme_id', newBrandId);
+    if (currentAccount?.id) {
+      saveAccountData(currentAccount.id, 'brand_theme_id', newBrandId);
+    }
     const found = PHILIPPINE_INSURANCE_BRANDS.find((b) => b.id === newBrandId);
     if (found) {
       showToast(`Switched appearance to ${found.name} • "${found.tagline}"`, 'success');
@@ -232,7 +360,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const setAppearanceMode = (mode: AppearanceMode) => {
     setAppearanceModeState(mode);
-    saveToStorage('appearance_mode', mode);
+    if (currentAccount?.id) {
+      saveAccountData(currentAccount.id, 'appearance_mode', mode);
+    }
     showToast(`Appearance mode set to ${mode.replace('_', ' ')}`, 'info');
   };
 
@@ -249,39 +379,79 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     root.setAttribute('data-appearance', appearanceMode);
   }, [currentBrand, appearanceMode]);
 
-  // Entities
+  // Entities initialized for the active user account
   const [clients, setClients] = useState<Client[]>(() =>
-    loadFromStorage('clients', INITIAL_CLIENTS)
+    getAccountData(activeId, 'clients', isEarl ? INITIAL_CLIENTS : isCamille ? CAMILLE_INITIAL_CLIENTS : [])
   );
   const [policies, setPolicies] = useState<Policy[]>(() =>
-    loadFromStorage('policies', INITIAL_POLICIES)
+    getAccountData(activeId, 'policies', isEarl ? INITIAL_POLICIES : isCamille ? CAMILLE_INITIAL_POLICIES : [])
   );
   const [premiumPayments, setPremiumPayments] = useState<PremiumPayment[]>(() =>
-    loadFromStorage('premium_payments', INITIAL_PREMIUM_PAYMENTS)
+    getAccountData(activeId, 'premium_payments', isEarl ? INITIAL_PREMIUM_PAYMENTS : [])
   );
   const [fundValues, setFundValues] = useState<FundValueRecord[]>(() =>
-    loadFromStorage('fund_values', INITIAL_FUND_VALUES)
+    getAccountData(
+      activeId,
+      'fund_values',
+      isEarl
+        ? INITIAL_FUND_VALUES
+        : isCamille
+        ? [
+            {
+              id: 'cr-fv-1',
+              clientId: 'cr-c1',
+              policyId: 'cr-p1',
+              date: '2026-09-20',
+              fundName: 'InLife Growth Fund',
+              units: 120000,
+              navpu: 2.0,
+              totalValue: 240000,
+            },
+          ]
+        : []
+    )
   );
   const [appointments, setAppointments] = useState<CalendarAppointment[]>(() =>
-    loadFromStorage('appointments', INITIAL_APPOINTMENTS)
+    getAccountData(activeId, 'appointments', isEarl ? INITIAL_APPOINTMENTS : [])
   );
   const [pendingEmails, setPendingEmails] = useState<PendingEmailReview[]>(() =>
-    loadFromStorage('pending_emails', INITIAL_PENDING_EMAILS)
+    getAccountData(activeId, 'pending_emails', isEarl ? INITIAL_PENDING_EMAILS : [])
   );
   const [emailRecords, setEmailRecords] = useState<EmailRecord[]>(() =>
-    loadFromStorage('email_records', INITIAL_EMAIL_RECORDS)
+    getAccountData(activeId, 'email_records', isEarl ? INITIAL_EMAIL_RECORDS : [])
   );
   const [templates, setTemplates] = useState<EmailTemplate[]>(() =>
-    loadFromStorage('templates', INITIAL_TEMPLATES)
+    getAccountData(activeId, 'templates', INITIAL_TEMPLATES)
   );
   const [activities, setActivities] = useState<ActivityItem[]>(() =>
-    loadFromStorage('activities', INITIAL_ACTIVITIES)
+    getAccountData(activeId, 'activities', isEarl ? INITIAL_ACTIVITIES : [])
   );
   const [documents, setDocuments] = useState<DocumentRecord[]>(() =>
-    loadFromStorage('documents', INITIAL_DOCUMENTS)
+    getAccountData(activeId, 'documents', isEarl ? INITIAL_DOCUMENTS : [])
   );
   const [settings, setSettings] = useState<UserSettings>(() =>
-    loadFromStorage('settings', INITIAL_SETTINGS)
+    getAccountData(
+      activeId,
+      'settings',
+      isEarl
+        ? INITIAL_SETTINGS
+        : isCamille
+        ? {
+            ...INITIAL_SETTINGS,
+            advisorName: 'Camille Reyes',
+            advisorEmail: 'camille.reyes@inlife.com.ph',
+            advisorPhone: '+63 919 444 8888',
+            advisorTitle: 'Associate Financial Adviser',
+            unitBranch: 'InLife BGC Prestige Financial District',
+          }
+        : {
+            ...INITIAL_SETTINGS,
+            advisorName: currentAccount?.name || 'Financial Adviser',
+            advisorEmail: currentAccount?.email || 'adviser@inlife.com.ph',
+            advisorTitle: currentAccount?.role || 'Financial Adviser',
+            unitBranch: currentAccount?.unitBranch || 'InLife Makati Financial Center',
+          }
+    )
   );
 
   // Toast
@@ -308,18 +478,178 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isConnectingGoogle, setIsConnectingGoogle] = useState<boolean>(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
 
-  // Persist entities
-  useEffect(() => saveToStorage('clients', clients), [clients]);
-  useEffect(() => saveToStorage('policies', policies), [policies]);
-  useEffect(() => saveToStorage('premium_payments', premiumPayments), [premiumPayments]);
-  useEffect(() => saveToStorage('fund_values', fundValues), [fundValues]);
-  useEffect(() => saveToStorage('appointments', appointments), [appointments]);
-  useEffect(() => saveToStorage('pending_emails', pendingEmails), [pendingEmails]);
-  useEffect(() => saveToStorage('email_records', emailRecords), [emailRecords]);
-  useEffect(() => saveToStorage('templates', templates), [templates]);
-  useEffect(() => saveToStorage('activities', activities), [activities]);
-  useEffect(() => saveToStorage('documents', documents), [documents]);
-  useEffect(() => saveToStorage('settings', settings), [settings]);
+  // Persist entities strictly to the active user's storage
+  useEffect(() => {
+    if (currentAccount?.id) saveAccountData(currentAccount.id, 'clients', clients);
+  }, [clients, currentAccount?.id]);
+
+  useEffect(() => {
+    if (currentAccount?.id) saveAccountData(currentAccount.id, 'policies', policies);
+  }, [policies, currentAccount?.id]);
+
+  useEffect(() => {
+    if (currentAccount?.id) saveAccountData(currentAccount.id, 'premium_payments', premiumPayments);
+  }, [premiumPayments, currentAccount?.id]);
+
+  useEffect(() => {
+    if (currentAccount?.id) saveAccountData(currentAccount.id, 'fund_values', fundValues);
+  }, [fundValues, currentAccount?.id]);
+
+  useEffect(() => {
+    if (currentAccount?.id) saveAccountData(currentAccount.id, 'appointments', appointments);
+  }, [appointments, currentAccount?.id]);
+
+  useEffect(() => {
+    if (currentAccount?.id) saveAccountData(currentAccount.id, 'pending_emails', pendingEmails);
+  }, [pendingEmails, currentAccount?.id]);
+
+  useEffect(() => {
+    if (currentAccount?.id) saveAccountData(currentAccount.id, 'email_records', emailRecords);
+  }, [emailRecords, currentAccount?.id]);
+
+  useEffect(() => {
+    if (currentAccount?.id) saveAccountData(currentAccount.id, 'templates', templates);
+  }, [templates, currentAccount?.id]);
+
+  useEffect(() => {
+    if (currentAccount?.id) saveAccountData(currentAccount.id, 'activities', activities);
+  }, [activities, currentAccount?.id]);
+
+  useEffect(() => {
+    if (currentAccount?.id) saveAccountData(currentAccount.id, 'documents', documents);
+  }, [documents, currentAccount?.id]);
+
+  useEffect(() => {
+    if (currentAccount?.id) saveAccountData(currentAccount.id, 'settings', settings);
+  }, [settings, currentAccount?.id]);
+
+  // Account switching and authentication functions
+  const loginAccount = (account: AppAccount) => {
+    setCurrentAccount(account);
+    localStorage.setItem(CURRENT_ACCOUNT_STORAGE_KEY, account.id);
+    localStorage.setItem(`inlife_account_meta_${account.id}`, JSON.stringify(account));
+
+    // Register account if not existing in registered list
+    setAllAccounts((prev) => {
+      if (prev.some((a) => a.id === account.id)) return prev;
+      const updated = [...prev, account];
+      localStorage.setItem(REGISTERED_ACCOUNTS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
+    const isEarlAcc = account.id === 'earl_restar';
+    const isCamilleAcc = account.id === 'camille_reyes';
+
+    setClients(getAccountData(account.id, 'clients', isEarlAcc ? INITIAL_CLIENTS : isCamilleAcc ? CAMILLE_INITIAL_CLIENTS : []));
+    setPolicies(getAccountData(account.id, 'policies', isEarlAcc ? INITIAL_POLICIES : isCamilleAcc ? CAMILLE_INITIAL_POLICIES : []));
+    setPremiumPayments(getAccountData(account.id, 'premium_payments', isEarlAcc ? INITIAL_PREMIUM_PAYMENTS : []));
+    setFundValues(
+      getAccountData(
+        account.id,
+        'fund_values',
+        isEarlAcc
+          ? INITIAL_FUND_VALUES
+          : isCamilleAcc
+          ? [
+              {
+                id: 'cr-fv-1',
+                clientId: 'cr-c1',
+                policyId: 'cr-p1',
+                date: '2026-09-20',
+                fundName: 'InLife Growth Fund',
+                units: 120000,
+                navpu: 2.0,
+                totalValue: 240000,
+              },
+            ]
+          : []
+      )
+    );
+    setAppointments(getAccountData(account.id, 'appointments', isEarlAcc ? INITIAL_APPOINTMENTS : []));
+    setPendingEmails(getAccountData(account.id, 'pending_emails', isEarlAcc ? INITIAL_PENDING_EMAILS : []));
+    setEmailRecords(getAccountData(account.id, 'email_records', isEarlAcc ? INITIAL_EMAIL_RECORDS : []));
+    setTemplates(getAccountData(account.id, 'templates', INITIAL_TEMPLATES));
+    setActivities(getAccountData(account.id, 'activities', isEarlAcc ? INITIAL_ACTIVITIES : []));
+    setDocuments(getAccountData(account.id, 'documents', isEarlAcc ? INITIAL_DOCUMENTS : []));
+    setSettings(
+      getAccountData(
+        account.id,
+        'settings',
+        isEarlAcc
+          ? INITIAL_SETTINGS
+          : isCamilleAcc
+          ? {
+              ...INITIAL_SETTINGS,
+              advisorName: 'Camille Reyes',
+              advisorEmail: 'camille.reyes@inlife.com.ph',
+              advisorPhone: '+63 919 444 8888',
+              advisorTitle: 'Associate Financial Adviser',
+              unitBranch: 'InLife BGC Prestige Financial District',
+            }
+          : {
+              ...INITIAL_SETTINGS,
+              advisorName: account.name,
+              advisorEmail: account.email,
+              advisorPhone: account.phone || '+63 917 000 0000',
+              advisorTitle: account.role,
+              unitBranch: account.unitBranch,
+            }
+      )
+    );
+
+    if (account.brandId) {
+      setBrandTheme(account.brandId);
+    }
+  };
+
+  const logoutAccount = () => {
+    setCurrentAccount(null);
+    localStorage.removeItem(CURRENT_ACCOUNT_STORAGE_KEY);
+    localStorage.removeItem(LOCAL_STORAGE_PREFIX + 'google_connected');
+    sessionStorage.removeItem('inlife_session_gmail_token');
+    showToast('Signed out of adviser workspace.', 'info');
+  };
+
+  // Real-Time Dynamic Aggregate Metrics Computed Live
+  const activeClients = clients.filter((c) => !c.isArchived).length;
+  const totalClients = clients.length;
+  const archivedClients = clients.filter((c) => c.isArchived).length;
+  const activePolicies = policies.filter((p) => p.status === 'In Force').length;
+  const totalPolicies = policies.length;
+  const totalFundValue = fundValues.reduce((sum, f) => sum + (Number(f.totalValue) || 0), 0);
+  const totalAnnualizedPremium = policies
+    .filter((p) => p.status === 'In Force')
+    .reduce((sum, p) => sum + (Number(p.premiumAmount) || 0), 0);
+
+  const pendingLedgerAmount = premiumPayments
+    .filter((p) => p.status === 'Pending' || p.status === 'Overdue')
+    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  const premiumsDueAmount =
+    pendingLedgerAmount > 0
+      ? pendingLedgerAmount
+      : policies.filter((p) => p.status === 'In Force').reduce((sum, p) => sum + (Number(p.premiumAmount) || 0), 0);
+
+  const upcomingPremiumsCount = policies.filter((p) => p.status === 'In Force').length;
+  const pendingReviewsCount = pendingEmails.length;
+  const todayAppointmentsCount = appointments.filter(
+    (a) => a.date === '2026-09-26' || a.date === new Date().toISOString().split('T')[0]
+  ).length;
+
+  const metrics = {
+    totalClients,
+    activeClients,
+    archivedClients,
+    totalPolicies,
+    activePolicies,
+    totalFundValue,
+    totalAnnualizedPremium,
+    premiumsDueAmount,
+    upcomingPremiumsCount,
+    pendingReviewsCount,
+    todayAppointmentsCount,
+    formatPHP,
+    formatPHPCompact,
+  };
 
   // Init Google Firebase Auth listener
   useEffect(() => {
@@ -1029,6 +1359,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         settings,
         updateSettings,
+
+        currentAccount,
+        loginAccount,
+        logoutAccount,
+        allAccounts,
+        metrics,
 
         currentBrand,
         setBrandTheme,

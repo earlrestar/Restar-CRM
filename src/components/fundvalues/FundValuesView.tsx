@@ -3,9 +3,16 @@ import { TrendingUp, PieChart, Shield, ArrowUpRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const FundValuesView: React.FC = () => {
-  const { fundValues, policies, clients, openClientProfile } = useApp();
+  const { fundValues, policies, clients, openClientProfile, metrics } = useApp();
 
-  const totalFundValue = fundValues.reduce((acc, f) => acc + f.totalValue, 0);
+  const totalFundValue = fundValues.reduce((acc, f) => acc + (Number(f.totalValue) || 0), 0);
+  const vulPoliciesCount = policies.filter(
+    (p) =>
+      p.planType === 'VUL' ||
+      p.productName.toLowerCase().includes('wealth') ||
+      p.productName.toLowerCase().includes('abundance') ||
+      p.productName.toLowerCase().includes('solid')
+  ).length;
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6 animate-fadeIn">
@@ -22,7 +29,12 @@ export const FundValuesView: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
           <span className="text-[10px] font-bold text-slate-400 uppercase">Total Portfolio Managed</span>
-          <p className="text-2xl font-black text-emerald-600 mt-1">₱18,740,000</p>
+          <p className="text-2xl font-black text-emerald-600 mt-1">
+            {metrics.formatPHP(totalFundValue)}
+          </p>
+          <span className="text-[11px] text-slate-400">
+            {fundValues.length} active client fund accounts
+          </span>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
           <span className="text-[10px] font-bold text-slate-400 uppercase">Top InLife Fund</span>
@@ -31,7 +43,10 @@ export const FundValuesView: React.FC = () => {
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
           <span className="text-[10px] font-bold text-slate-400 uppercase">VUL In-Force Count</span>
-          <p className="text-2xl font-black text-blue-600 mt-1">94 Policies</p>
+          <p className="text-2xl font-black text-blue-600 mt-1">{vulPoliciesCount} Policies</p>
+          <span className="text-[11px] text-slate-400">
+            {vulPoliciesCount > 0 ? `${((vulPoliciesCount / (policies.length || 1)) * 100).toFixed(0)}% of total policies` : 'No VUL policies yet'}
+          </span>
         </div>
       </div>
 

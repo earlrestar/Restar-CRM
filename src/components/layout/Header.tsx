@@ -10,6 +10,9 @@ import {
   Palette,
   Check,
   User,
+  LogOut,
+  ChevronDown,
+  Shield,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AuthModal } from '../auth/AuthModal';
@@ -31,12 +34,17 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAddClient, onOpenNewAppoin
     currentBrand,
     setBrandTheme,
     allBrands,
+    currentAccount,
+    logoutAccount,
+    allAccounts,
+    loginAccount,
   } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [showBrandMenu, setShowBrandMenu] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const searchResults = searchTerm.trim()
@@ -224,11 +232,103 @@ export const Header: React.FC<HeaderProps> = ({ onOpenAddClient, onOpenNewAppoin
             backgroundColor: currentBrand.primaryColor,
             color: currentBrand.id === 'sunlife' ? '#0f172a' : '#ffffff',
           }}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-98"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-98 cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           <span>+ Add Client</span>
         </button>
+
+        {/* Logged In Adviser Account Pill & Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowAccountMenu(!showAccountMenu)}
+            className="flex items-center gap-2 p-1.5 pr-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 transition-all cursor-pointer shadow-2xs"
+            title="Active Adviser Account & Privacy"
+          >
+            <div
+              className="w-7 h-7 rounded-lg text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-2xs"
+              style={{ backgroundColor: currentBrand.primaryColor }}
+            >
+              {currentAccount?.initials || 'FA'}
+            </div>
+            <span className="text-xs font-bold text-slate-800 hidden md:inline max-w-[110px] truncate">
+              {currentAccount?.name?.split(' ')[0] || 'Adviser'}
+            </span>
+            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+          </button>
+
+          {showAccountMenu && (
+            <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2.5 z-50 animate-scaleIn">
+              {/* Account Header */}
+              <div className="px-4 py-2 border-b border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-9 h-9 rounded-xl text-white font-black text-xs flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: currentBrand.primaryColor }}
+                  >
+                    {currentAccount?.initials || 'FA'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 truncate">
+                      {currentAccount?.name || 'Financial Adviser'}
+                    </p>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      {currentAccount?.email}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2.5 flex items-center gap-1.5 text-[10px] text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md font-semibold">
+                  <Shield className="w-3 h-3 text-emerald-600 shrink-0" />
+                  <span>Isolated & Encrypted Workspace</span>
+                </div>
+              </div>
+
+              {/* Quick Switch Profiles */}
+              <div className="px-3 pt-2 pb-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Switch Private Account
+              </div>
+              <div className="max-h-48 overflow-y-auto px-1 space-y-0.5">
+                {allAccounts.map((acc) => (
+                  <button
+                    key={acc.id}
+                    onClick={() => {
+                      loginAccount(acc);
+                      setShowAccountMenu(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                      currentAccount?.id === acc.id
+                        ? 'bg-slate-100 font-bold text-slate-900'
+                        : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-semibold">{acc.name}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{acc.role}</p>
+                    </div>
+                    {currentAccount?.id === acc.id && (
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Sign Out Button */}
+              <div className="pt-2 mt-2 border-t border-slate-100 px-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAccountMenu(false);
+                    logoutAccount();
+                  }}
+                  className="w-full px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Log Out & Lock Workspace</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Google Sign-In & Netlify Diagnostics Modal */}
